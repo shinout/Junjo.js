@@ -1,7 +1,7 @@
-const WorkFlow = require('../WorkFlow');
+const Junjo = require('../Junjo');
 
 // test start
-_ = new WorkFlow();
+_ = new Junjo();
 
 function asyncMethod(name, n, cb) {
   console.log(name + ' : start');

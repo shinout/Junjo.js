@@ -1,24 +1,24 @@
-const WorkFlow = function() {
+const Junjo = function() {
   var _ = function(fn) {
-    return new WorkFlow.Func(fn, _);
+    return new Junjo.Func(fn, _);
   };
 
-  _.__proto__ = WorkFlow.prototype;
+  _.__proto__ = Junjo.prototype;
   _.fncs = {};
   _.results = {};
 
   return _;
 };
 
-WorkFlow.prototype.result = function(lbl, val) {
+Junjo.prototype.result = function(lbl, val) {
   this.results[lbl] = val;
 };
 
-WorkFlow.prototype.run = function(arr) {
+Junjo.prototype.run = function(arr) {
 
   var fncs = _.fncs;
   arr.forEach(function(wfn, k) {
-    if (!wfn instanceof WorkFlow.Func) return;
+    if (!wfn instanceof Junjo.Func) return;
     if (!wfn.label()) wfn.label(k);
     fncs[wfn.label()] = wfn;
 
@@ -36,7 +36,7 @@ WorkFlow.prototype.run = function(arr) {
   return this;
 };
 
-WorkFlow.Func = function(fn, wf) {
+Junjo.Func = function(fn, wf) {
   this.func = fn;
   this.afters = [];
   this.callbacks = [];
@@ -47,31 +47,31 @@ WorkFlow.Func = function(fn, wf) {
   this.done = false;
 }
 
-WorkFlow.Func.prototype.async = function(v) {
+Junjo.Func.prototype.async = function(v) {
   if (v === undefined) v = false;
   else v = !v;
   this._sync = v;
   return this;
 };
 
-WorkFlow.Func.prototype.sync = function(v) {
+Junjo.Func.prototype.sync = function(v) {
   if (v === undefined) v = true;
   else v = !!v;
   this._sync = v;
   return this;
 };
 
-WorkFlow.Func.prototype.scope = function(v) {
+Junjo.Func.prototype.scope = function(v) {
   if (v === undefined) return this._scope;
   else this._scope = v; return this;
 };
 
-WorkFlow.Func.prototype.label = function(v) {
+Junjo.Func.prototype.label = function(v) {
   if (v === undefined) return this._label;
   else this._label = v; return this;
 };
 
-WorkFlow.Func.prototype.execute = function() {
+Junjo.Func.prototype.execute = function() {
   if (--this.counter > 0) return;
   if (this.done) return;
   this.done = true;
@@ -94,19 +94,19 @@ WorkFlow.Func.prototype.execute = function() {
 
 };
 
-WorkFlow.Func.prototype._execute = function() {
+Junjo.Func.prototype._execute = function() {
   return this.func.apply(this.scope(), this._params)
 };
 
 
-WorkFlow.Func.prototype.params = function() {
+Junjo.Func.prototype.params = function() {
   Array.prototype.forEach.call(arguments, function(v) {
     this._params.push(v);
   }, this);
   return this;
 };
 
-WorkFlow.Func.prototype.after = function(arr) {
+Junjo.Func.prototype.after = function(arr) {
   this.counter = 0;
   Array.prototype.forEach.call(arguments, function(v) {
     this.counter++;
@@ -116,7 +116,7 @@ WorkFlow.Func.prototype.after = function(arr) {
 };
 
 Object.getOwnPropertyNames(Function.prototype).forEach(function(k) {
-  WorkFlow.prototype[k] = Function.prototype[k];
+  Junjo.prototype[k] = Function.prototype[k];
 });
 
-if (typeof exports == 'object' && exports === this) module.exports = WorkFlow;
+if (typeof exports == 'object' && exports === this) module.exports = Junjo;
