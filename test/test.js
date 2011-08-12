@@ -4,7 +4,12 @@ var node = (typeof exports == 'object' && exports === this);
 function junjo_test() {
   const J = (node) ? require('../Junjo') : Junjo;
 
-  var _ = new J();
+  var _ = new J({
+    defaultCatcher: function(e) {
+      console.log("うおおおおおえらーーーーだーーーーーーーー");
+      console.log("でも処理を続けるのさ _.setError() してないからね。");
+    }
+  });
 
   function consolelog() {
     if (node) {
@@ -31,14 +36,18 @@ function junjo_test() {
 
   _.run([
     _(function(callback) {
+      throw "unko";
       asyncMethod("僕が最初に実行されます!", 30, callback); 
-
     }).label('start'),
 
     _(function(callback) {
       asyncMethod("最初の奴が終わってから実行:shinです", 20, callback); 
       return "結果です。";
     }).label("shin").after("start"),
+
+    _(function(callback) {
+      asyncMethod("依存関係の順序が逆。登録は早いけどsync2の後に実行されるのさ", 30, callback);
+    }).after('sync2'),
 
     _(function(callback) {
       asyncMethod("勝手に始めちゃうよ", 10, callback); 
@@ -48,10 +57,32 @@ function junjo_test() {
       asyncMethod("200msecもかかる処理です", 200, callback); 
     }).label('long'),
 
+    _(function(callback) {
+      throw new Error("えらー");
+    }).label('えらら').catchAt('catcher'),
+
+    _(function(e) {
+      consolelog(e.message);
+      consolelog("this function is called only when an error is occurred");
+      // _.setError(); // これで次以降の処理はとまる
+    }).label('catcher').isCatcher(),
+
+    _(function(e) {
+      consolelog(e.message);
+      consolelog("しんのすけ。俺もキャッチャー.");
+      consolelog("平時には実行されない。つまり、isCatcher()は必須ではない。catchAtで指定されたらそいつはキャッチャー");
+    }).label('しんのすけ'),
+
+    _(function(e) {
+      consolelog(e.message);
+      consolelog("誰からもthrowされないけど、キャッチャーだから実行されない");
+    }).label('george').isCatcher(),
+
     _(function() {
       consolelog("同期関数です.マイペース。: start");
       consolelog("同期関数です.マイペース。: end");
-    }).sync(),
+      throw new Error("あべ");
+    }).sync().catchAt('しんのすけ'),
 
     _(function() {
       consolelog("同期関数その2. 200msec処理後に走ります :start");

@@ -1,4 +1,4 @@
-const Junjo = function() {
+const Junjo = function(options) {
   var _ = function(fn) {
     return new Junjo.Func(fn, _);
   };
@@ -13,8 +13,29 @@ const Junjo = function() {
   }
   _.fncs = {};
   _.results = {};
+  _._error = false;
+
+  Object.keys(Junjo.prototype).forEach(function(k) {
+    if (typeof options[k] == 'function') {
+      _[k] = options[k];
+    }
+  });
+
 
   return _;
+};
+
+Junjo.prototype.hasError = function() {
+  return this._error;
+};
+
+Junjo.prototype.setError = function(v) {
+  this._error = (v === undefined || v) ? true : false;
+};
+
+Junjo.prototype.defaultCatcher = function(e) {
+  this.setError();
+  console.error(e);
 };
 
 Junjo.prototype.result = function(lbl, val) {
@@ -24,19 +45,30 @@ Junjo.prototype.result = function(lbl, val) {
 Junjo.prototype.run = function(arr) {
 
   var fncs = this.fncs;
+
+  // register functions
   arr.forEach(function(wfn, k) {
     if (!wfn instanceof Junjo.Func) return;
     if (!wfn.label()) wfn.label(k);
     fncs[wfn.label()] = wfn;
+  });
 
+  // register dependencies
+  arr.forEach(function(wfn, k) {
     wfn.afters.forEach(function(lbl) {
       if (!fncs[lbl]) throw new Error('label "' + lbl  + '" is not defined.');
       fncs[lbl].callbacks.push(wfn);
     }, this);
+
+    if (wfn._catchAt && fncs[wfn._catchAt]) {
+      fncs[wfn._catchAt]._isCatcher = true;
+      wfn.catcher = fncs[wfn._catchAt];
+    }
   });
 
+  // execute
   arr.forEach(function(wfn, k) {
-    if (!wfn.afters.length) {
+    if (!wfn.afters.length && !wfn._isCatcher) {
       wfn.execute();
     }
   }, this);
@@ -51,6 +83,9 @@ Junjo.Func = function(fn, wf) {
   this.workflow = wf;
   this.counter = 1;
   this._sync = false;
+  this._catchAt = null;
+  this.catcher = null;
+  this._isCatcher = false;
   this.done = false;
 }
 
@@ -68,6 +103,16 @@ Junjo.Func.prototype.sync = function(v) {
   return this;
 };
 
+Junjo.Func.prototype.catchAt = function(v) {
+  this._catchAt = v;
+  return this;
+};
+
+Junjo.Func.prototype.isCatcher = function() {
+  this._isCatcher = true;
+  return this;
+};
+
 Junjo.Func.prototype.scope = function(v) {
   if (v === undefined) return this._scope;
   else this._scope = v; return this;
@@ -79,12 +124,23 @@ Junjo.Func.prototype.label = function(v) {
 };
 
 Junjo.Func.prototype.execute = function() {
+  if (this.workflow.hasError() && !this._isCatcher) return;
   if (--this.counter > 0) return;
-  if (this.done) return;
+  if (this.done && !this._isCatcher) return;
+
   this.done = true;
   var wfn = this;
+
   if (wfn._sync) {
-    wfn.workflow.result(wfn.label(), wfn._execute());
+    try {
+      wfn.workflow.result(wfn.label(), wfn._execute());
+    }
+    catch (e) {
+      if (wfn.catcher) 
+        wfn.catcher.params(e).execute();
+      else
+        wfn.workflow.defaultCatcher(e);
+    }
     wfn.callbacks.forEach(function(cb_wfn) {
       cb_wfn.execute();
     });
@@ -96,9 +152,16 @@ Junjo.Func.prototype.execute = function() {
         cb_wfn.execute();
       });
     });
-    wfn._execute();
+    try {
+      wfn._execute();
+    }
+    catch (e) {
+      if (wfn.catcher)
+        wfn.catcher.params(e).execute();
+      else
+        wfn.workflow.defaultCatcher(e);
+    }
   }
-
 };
 
 Junjo.Func.prototype._execute = function() {
