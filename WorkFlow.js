@@ -1,104 +1,122 @@
-const WorkFlow = function(obj) {
-
-  var scope = new WorkFlow.Scope();
-  var tx = function() {
-    return new WorkFlow.resultParam(tx, arguments);
+const WorkFlow = function() {
+  var _ = function(fn) {
+    return new WorkFlow.Func(fn, _);
   };
 
-  tx.__proto__ = scope;
-  return tx;
+  _.__proto__ = WorkFlow.prototype;
+  _.fncs = {};
+  _.results = {};
+
+  return _;
 };
 
-WorkFlow.resultParam = function(tx, args) {
-  this.tx   = tx;
-  this.args = args;
+WorkFlow.prototype.result = function(lbl, val) {
+  this.results[lbl] = val;
 };
 
-WorkFlow.resultParam.prototype.get = function() {
-  var ret = this.tx;
-  Array.prototype.every.call(this.args, function(v) {
-    ret = ret[v];
-    return (typeof ret == 'object');
-  });
-  return ret;
-};
+WorkFlow.prototype.run = function(arr) {
 
+  var fncs = _.fncs;
+  arr.forEach(function(wfn, k) {
+    if (!wfn instanceof WorkFlow.Func) return;
+    if (!wfn.label()) wfn.label(k);
+    fncs[wfn.label()] = wfn;
 
-WorkFlow.Scope = function() {};
-WorkFlow.Scope.prototype.run = function(obj) {
-  var fns  = {};
-  var self = this;
-  Object.keys(obj).forEach(function(k) {
-    var fn = self.buildFunction(obj[k], k);
-    fns[k] = fn;
-  });
-
-  Object.keys(fns).forEach(function(k) {
-    switch (fns[k].afters.length) {
-    case 0: break;
-    case 1: 
-      fns[fns[k].afters[0]].callbacks.push(fns[k]);
-    default:
-      var f = WorkFlow.Utils.afterNTimes(fns[k].afters.length);
-      fns[k].afters.forEach(function(v) {
-        fns[v].callbacks.push(f);
-      });
-      break;
-    }
-
-    fns[k].execute();
-  });
-  return tx;
-};
-
-WorkFlow.Scope.prototype.buildFunction = function(arr, key) {
-  var self = this;
-  var fn, afters = [], params = [];
-  for(var i = 0, l = arr.length; i < l; i++) {
-    if (!fn) {
-      if (typeof arr[i] == 'function') {
-        fn = arr[i].bind(null); // copy the function
-      }
-      else {
-        afters.push(arr[i]);
-      }
-    }
-    else {
-      params.push(arr[i]);
-    }
-  }
-  if (!fn) throw new Error("no function given");
-  params.push(function() {
-    self[key] = arguments;
-    fn.callbacks.forEach(function(cb) {
-      cb.execute();
-    });
-  });
-  fn.execute = WorkFlow.Utils.execute;
-  fn.params = params;
-  fn.afters = afters;
-  fn.callbacks = [];
-  return fn;
-};
-
-WorkFlow.Utils = {
-  afterNTimes: function(fn, n) {
-    var count = 0;
-    return function() {
-      count++;
-      if (count == n) fn();
-    };
-  },
-
-  execute: function() {
-    this.params.forEach(function(v, k) {
-      if (v instanceof WorkFlow.resultParam) {
-        this.params[k] = v.get();
-      }
+    wfn.afters.forEach(function(lbl) {
+      if (!fncs[lbl]) throw new Error('label "' + lbl  + '" is not defined.');
+      fncs[lbl].callbacks.push(wfn);
     }, this);
-    return this.apply(null, this.params);
+  });
+
+  arr.forEach(function(wfn, k) {
+    if (!wfn.afters.length) {
+      wfn.execute();
+    }
+  }, this);
+  return this;
+};
+
+WorkFlow.Func = function(fn, wf) {
+  this.func = fn;
+  this.afters = [];
+  this.callbacks = [];
+  this._params = [];
+  this.workflow = wf;
+  this.counter = 1;
+  this._sync = false;
+  this.done = false;
+}
+
+WorkFlow.Func.prototype.async = function(v) {
+  if (v === undefined) v = false;
+  else v = !v;
+  this._sync = v;
+  return this;
+};
+
+WorkFlow.Func.prototype.sync = function(v) {
+  if (v === undefined) v = true;
+  else v = !!v;
+  this._sync = v;
+  return this;
+};
+
+WorkFlow.Func.prototype.scope = function(v) {
+  if (v === undefined) return this._scope;
+  else this._scope = v; return this;
+};
+
+WorkFlow.Func.prototype.label = function(v) {
+  if (v === undefined) return this._label;
+  else this._label = v; return this;
+};
+
+WorkFlow.Func.prototype.execute = function() {
+  if (--this.counter > 0) return;
+  if (this.done) return;
+  this.done = true;
+  var wfn = this;
+  if (wfn._sync) {
+    wfn.workflow.result(wfn.label(), wfn._execute());
+    wfn.callbacks.forEach(function(cb_wfn) {
+      cb_wfn.execute();
+    });
+  }
+  else {
+    wfn._params.push(function() {
+      wfn.workflow.result(wfn.label(), arguments);
+      wfn.callbacks.forEach(function(cb_wfn) {
+        cb_wfn.execute();
+      });
+    });
+    wfn._execute();
   }
 
 };
+
+WorkFlow.Func.prototype._execute = function() {
+  return this.func.apply(this.scope(), this._params)
+};
+
+
+WorkFlow.Func.prototype.params = function() {
+  Array.prototype.forEach.call(arguments, function(v) {
+    this._params.push(v);
+  }, this);
+  return this;
+};
+
+WorkFlow.Func.prototype.after = function(arr) {
+  this.counter = 0;
+  Array.prototype.forEach.call(arguments, function(v) {
+    this.counter++;
+    this.afters.push(v);
+  }, this);
+  return this;
+};
+
+Object.getOwnPropertyNames(Function.prototype).forEach(function(k) {
+  WorkFlow.prototype[k] = Function.prototype[k];
+});
 
 if (typeof exports == 'object' && exports === this) module.exports = WorkFlow;
