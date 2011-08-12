@@ -3,7 +3,14 @@ const Junjo = function() {
     return new Junjo.Func(fn, _);
   };
 
-  _.__proto__ = Junjo.prototype;
+  if(_.__proto__) {
+    _.__proto__ = Junjo.prototype;
+  }
+  else {
+    Object.keys(Junjo.prototype).forEach(function(k) {
+      _[k] = Junjo.prototype[k];
+    });
+  }
   _.fncs = {};
   _.results = {};
 
@@ -16,7 +23,7 @@ Junjo.prototype.result = function(lbl, val) {
 
 Junjo.prototype.run = function(arr) {
 
-  var fncs = _.fncs;
+  var fncs = this.fncs;
   arr.forEach(function(wfn, k) {
     if (!wfn instanceof Junjo.Func) return;
     if (!wfn.label()) wfn.label(k);
