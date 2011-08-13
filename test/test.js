@@ -6,8 +6,9 @@ function junjo_test() {
 
   var _ = new J({
     defaultCatcher: function(e) {
+      console.log(e.stack);
       console.log("うおおおおおえらーーーーだーーーーーーーー");
-      console.log("でも処理を続けるのさ _.setError() してないからね。");
+      console.log("でも処理を続けるのさ _.terminate() してないからね。");
     },
 
     onEnd: function() {
@@ -77,7 +78,7 @@ function junjo_test() {
     _(function(e) {
       consolelog(e.message);
       consolelog("this function is called only when an error is occurred");
-      // _.setError(); // これで次以降の処理はとまる
+      // _.terminate(); // これで次以降の処理はとまる
     }).label('catcher').isCatcher(),
 
     _(function(e) {
@@ -99,17 +100,17 @@ function junjo_test() {
 
     _(function() {
       consolelog("同期関数その2. 200msec処理後に走ります :start");
-      consolelog("同期関数その2. 200msecのやつの結果.", _.results.long);
+      consolelog("同期関数その2. 200msecのやつの結果.", _.results('long'));
       consolelog("同期関数その2. 200msec処理後に走ります :end");
       return "同期関数の場合戻り値がresultsに格納されます";
     }).after('long').label('sync2').sync(),
 
     _(function(callback) {
-      consolelog("shinの結果です。", _.results.shin);
+      consolelog("shinの結果です。", _.results('shin'));
     }).after("shin").sync(),
 
     _(function(callback) {
-      consolelog("同期関数その2の結果です。", _.results.sync2);
+      consolelog("同期関数その2の結果です。", _.results('sync2'));
     }).sync().after('sync2')
   ]);
 /*
@@ -119,7 +120,7 @@ function junjo_test() {
   var j = new J({
     defaultCatcher: function(e) {
       console.log("うおおおおおえらーーーーだーーーーーーーー");
-      console.log("でも処理を続けるのさ j.setError() してないからね。");
+      console.log("でも処理を続けるのさ j.terminate() してないからね。");
     },
     after : _
   });
@@ -154,7 +155,7 @@ function junjo_test() {
     j(function(e) {
       consolelog(e.message);
       consolelog("this function is called only when an error is occurred");
-      // j.setError(); // これで次以降の処理はとまる
+      // j.terminate(); // これで次以降の処理はとまる
     }).label('catcher').isCatcher(),
 
     j(function(e) {
