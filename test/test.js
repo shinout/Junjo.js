@@ -2,28 +2,19 @@ var node = (typeof exports == 'object' && exports === this);
 
 // test start
 function junjo_test() {
-  const J = (node) ? require('../Junjo') : Junjo;
+  function asyncMethod(name, n, cb) {
+    console.log(name);
+    setTimeout(function() {
+      console.log('\t' + name + ' + ' + n + ' [sec]');
+      cb(null, name);
+    }, n);
+  }
 
-  var _ = new J({
-    defaultCatcher: function(e) {
-      console.log(e.stack);
-      console.log("うおおおおおえらーーーーだーーーーーーーー");
-      console.log("でも処理を続けるのさ _.terminate() してないからね。");
-    },
-
-    onEnd: function() {
-      console.log("終了しました");
-    },
-
-    onSuccessEnd : function() {
-      console.log("無事終了しました。");
-    },
-
-    onErrorEnd: function() {
-      console.log("エラー終了しました。");
-    }
-  });
-
+  function syncMethod(name) {
+    console.log(name);
+    console.log('\t' + name + ' (sync)');
+  }
+ 
   function consolelog() {
     if (node) {
       console.log.apply(this, arguments);
@@ -38,160 +29,56 @@ function junjo_test() {
     }
   }
 
-  function asyncMethod(name, n, cb) {
-    consolelog(name + ' : start');
-    var result = "表示ログ = [" + name + "]";
-    setTimeout(function() {
-      consolelog(name + ' : end');
-      cb(null, result);
-    }, n);
-  }
+  const J = (node) ? require('../Junjo') : Junjo;
+  var jj = new J();
 
-  _.run([
-    _(function(callback) {
-      // throw "unko";
-      asyncMethod("僕が最初に実行されます!", 30, callback); 
-    }).label('start'),
-
-    _(function(callback) {
-      asyncMethod("最初の奴が終わってから実行:shinです", 20, callback); 
-      return "結果です。";
-    }).label("shin").after("start"),
-
-    _(function(callback) {
-      asyncMethod("依存関係の順序が逆。登録は早いけどsync2の後に実行されるのさ", 30, callback);
-    }).after('sync2'),
-
-    _(function(callback) {
-      asyncMethod("勝手に始めちゃうよ", 10, callback); 
+  jj.register(
+    jj('1st', function() {
+      asyncMethod(this.label(), 10, this.callback);
     }),
 
-    _(function(callback) {
-      asyncMethod("200msecもかかる処理です", 200, callback); 
-    }).label('long'),
+    jj('2nd', function() {
+      asyncMethod(this.label(), 20, this.callback);
+    }),
 
-    _(function(callback) {
-      console.log("おおおおおおおおお");
-      // throw new Error("えらー");
-    }).sync().label('えらら').catchAt('catcher'),
+    jj('3rd', function() {
+      asyncMethod(this.label(), 5, this.callback);
+    }).after('1st'),
 
-    _(function(e) {
-      consolelog(e.message);
-      consolelog("this function is called only when an error is occurred");
-      // _.terminate(); // これで次以降の処理はとまる
-    }).label('catcher').isCatcher(),
+    jj('4th', function() {
+      asyncMethod(this.label(), 20, this.callback);
+    }).after('2nd'),
 
-    _(function(e) {
-      consolelog(e.message);
-      consolelog("しんのすけ。俺もキャッチャー.");
-      consolelog("平時には実行されない。つまり、isCatcher()は必須ではない。catchAtで指定されたらそいつはキャッチャー");
-    }).label('しんのすけ'),
+    jj('5th', function() {
+      asyncMethod(this.label(), 20, this.callback);
+    }).after('1st', '2nd'),
 
-    _(function(e) {
-      consolelog(e.message);
-      consolelog("誰からもthrowされないけど、キャッチャーだから実行されない");
-    }).label('george').isCatcher(),
+    jj('6th', function() {
+      syncMethod(this.label());
+    }).after('4th'),
 
-    _(function() {
-      consolelog("同期関数です.マイペース。: start");
-      consolelog("同期関数です.マイペース。: end");
-      // throw new Error("あべ");
-    }).sync().catchAt('しんのすけ'),
+    jj('7th', function() {
+      asyncMethod(this.label(), 15, this.callback);
+    }).after('6th'),
 
-    _(function() {
-      consolelog("同期関数その2. 200msec処理後に走ります :start");
-      consolelog("同期関数その2. 200msecのやつの結果.", _.results('long'));
-      consolelog("同期関数その2. 200msec処理後に走ります :end");
-      return "同期関数の場合戻り値がresultsに格納されます";
-    }).after('long').label('sync2').sync(),
+    jj('8th', function() {
+      asyncMethod(this.label(), 35, this.callback);
+    }).after('5th'),
 
-    _(function(callback) {
-      consolelog("shinの結果です。", _.results('shin'));
-    }).after("shin").sync(),
+    jj('last', function() {
+      asyncMethod(this.label(), 35, this.callback);
+    }).after('1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th')
+  );
 
-    _(function(callback) {
-      consolelog("同期関数その2の結果です。", _.results('sync2'));
-    }).sync().after('sync2')
-  ]);
-/*
-
-  // 配列ではなく引数を列挙して実行
-
-  var j = new J({
-    defaultCatcher: function(e) {
-      console.log("うおおおおおえらーーーーだーーーーーーーー");
-      console.log("でも処理を続けるのさ j.terminate() してないからね。");
-    },
-    after : _
+  jj.on('end', function() {
+    console.log("END");
   });
 
-  j.run(
-    j(function(callback) {
-      throw "unko";
-      asyncMethod("僕が最初に実行されます!", 30, callback); 
-    }).label('start'),
+  jj.on('success', function() {
+    console.log("success");
+  });
 
-    j(function(callback) {
-      asyncMethod("最初の奴が終わってから実行:shinです", 20, callback); 
-      return "結果です。";
-    }).label("shin").after("start"),
-
-    j(function(callback) {
-      asyncMethod("依存関係の順序が逆。登録は早いけどsync2の後に実行されるのさ", 30, callback);
-    }).after('sync2'),
-
-    j(function(callback) {
-      asyncMethod("勝手に始めちゃうよ", 10, callback); 
-    }),
-
-    j(function(callback) {
-      asyncMethod("200msecもかかる処理です", 200, callback); 
-    }).label('long'),
-
-    j(function(callback) {
-      throw new Error("えらー");
-    }).label('えらら').catchAt('catcher'),
-
-    j(function(e) {
-      consolelog(e.message);
-      consolelog("this function is called only when an error is occurred");
-      // j.terminate(); // これで次以降の処理はとまる
-    }).label('catcher').isCatcher(),
-
-    j(function(e) {
-      consolelog(e.message);
-      consolelog("しんのすけ。俺もキャッチャー.");
-      consolelog("平時には実行されない。つまり、isCatcher()は必須ではない。catchAtで指定されたらそいつはキャッチャー");
-    }).label('しんのすけ'),
-
-    j(function(e) {
-      consolelog(e.message);
-      consolelog("誰からもthrowされないけど、キャッチャーだから実行されない");
-    }).label('george').isCatcher(),
-
-    j(function() {
-      consolelog("同期関数です.マイペース。: start");
-      consolelog("同期関数です.マイペース。: end");
-      throw new Error("あべ");
-    }).sync().catchAt('しんのすけ'),
-
-    j(function() {
-      consolelog("同期関数その2. 200msec処理後に走ります :start");
-      consolelog("同期関数その2. 200msecのやつの結果.", j.results.long);
-      consolelog("同期関数その2. 200msec処理後に走ります :end");
-      return "同期関数の場合戻り値がresultsに格納されます";
-    }).after('long').label('sync2').sync(),
-
-    j(function(callback) {
-      consolelog("shinの結果です。", j.results.shin);
-    }).after("shin"),
-
-    j(function(callback) {
-      consolelog("同期関数その2の結果です。", j.results.sync2);
-    }).sync().after('sync2')
-  );
-*/
-
+  jj.run();
 }
 
 if (node) { junjo_test();}
