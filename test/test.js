@@ -3,16 +3,16 @@ var node = (typeof exports == 'object' && exports === this);
 // test start
 function junjo_test() {
   function asyncMethod(name, n, cb) {
-    console.log(name);
+    consolelog(name);
     setTimeout(function() {
-      console.log('\t' + name + ' + ' + n + ' [sec]');
+      consolelog('\t' + name + ' + ' + n + ' [sec]');
       cb(null, name);
     }, n);
   }
 
   function syncMethod(name) {
-    console.log(name);
-    console.log('\t' + name + ' (sync)');
+    consolelog(name);
+    consolelog('\t' + name + ' (sync)');
   }
  
   function consolelog() {
@@ -55,27 +55,28 @@ function junjo_test() {
 
     jj('6th', function() {
       syncMethod(this.label());
-    }).after('4th'),
+    }).after('4th').params(),
 
     jj('7th', function() {
       asyncMethod(this.label(), 15, this.callback);
-    }).after('6th'),
+    }).after(),
 
     jj('8th', function() {
       asyncMethod(this.label(), 35, this.callback);
     }).after('5th'),
 
     jj('last', function() {
+      consolelog(arguments);
       asyncMethod(this.label(), 35, this.callback);
     }).after('1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th')
   );
 
   jj.on('end', function() {
-    console.log("END");
+    consolelog("END");
   });
 
   jj.on('success', function() {
-    console.log("success");
+    consolelog("success");
   });
 
   jj.run();

@@ -1,0 +1,6 @@
+module.exports = 
+{ user : 'root'
+,  password : ''
+, dbname : 'test_db'
+, tblname : 'test_table'
+};
