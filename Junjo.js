@@ -203,12 +203,32 @@ Junjo.prototype.run = function() {
   return this;
 };
 
-// callback flag
-Junjo.Callback = function(){};
+Junjo.Constant = function(keypath){
+  Object.defineProperty(this, 'keypath', { value :keypath, writable: false });
+};
+Junjo.Constant.prototype.get = function(obj) {
+  return this.keypath.reduce(function(o, k) {
+    return o[k];
+  }, obj);
+};
+
 Object.defineProperty(Junjo, 'callback', {
-  value : new Junjo.Callback(),
+  value : new Junjo.Constant(['callback']),
   writable: false
 });
+
+Object.defineProperty(Junjo, '_args', {
+  value: {},
+  writable : false
+});
+
+Junjo.args = function(i) {
+  var iInt = parseInt(i);
+  if (isNaN(iInt) || i == null) return;
+  if (!Junjo._args[iInt])
+    Junjo._args[iInt] = new Junjo.Constant(['_args', i]);
+  return Junjo._args[iInt];
+};
 
 // private functions 
 Junjo.privates = {};
@@ -358,6 +378,7 @@ Junjo.Func.prototype.label = function(v) {
 };
 
 Junjo.Func.prototype.execute = function() {
+  this._args = arguments;
   if (this._junjo._error && !this._isCatcher) return;
   if (--this._counter > 0) return;
   if (this._called && !this._isCatcher) return;
@@ -365,12 +386,15 @@ Junjo.Func.prototype.execute = function() {
   var scope = this._scope || this;
 
 	var len = this._params.length;
-	if (len && this._params[len-1] === Junjo.callback) {
-		this._params[len-1] = this.callback;
+	if (len) {
+    this._params.forEach(function(v, k) {
+      if (v instanceof Junjo.Constant) {
+        this._params[k] = v.get(this);
+      }
+    }, this);
 	}
-
   try {
-    var ret = this._func.apply(scope, (len) ? this._params : arguments)
+    var ret = this._func.apply(scope, (len) ? this._params : this._args)
     this._done = true;
     if (!this._cb_accessed) { // synchronous
       this._callback(ret);

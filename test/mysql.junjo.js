@@ -18,15 +18,13 @@ const jj = new Junjo({
 });
 
 jj.run(
-  //jj(client.query).scope(client).params('use ' + DB_NAME, jj.callback).catchAt('mysqlError'),
+  //jj(client.query).scope(client).params('use ' + DB_NAME, Junjo.callback).catchAt('mysqlError'),
   jj(client.query).bind(client, 'use ' + DB_NAME, Junjo.callback).catchAt('mysqlError'),
 
   jj(client.query).bind(client, 'select * from ' + TBL_NAME, Junjo.callback)
   .catchAt('mysqlError'),
 
-  jj(function(err, result) {
-    console.log(result);
-  }).after(),
+  jj(console.log).params(Junjo.args(1)).after(),
 
   jj('mysqlError', function(e, jfn) {
     console.log("from label " + jfn.label());
