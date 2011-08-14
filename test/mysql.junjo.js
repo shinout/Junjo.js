@@ -14,7 +14,8 @@ const jj = new Junjo({
   onEnd: function() {
     console.log("end");
     client.end();
-  }
+  },
+  nodeCallback: true
 });
 
 jj.run(
@@ -34,7 +35,9 @@ jj.run(
   jj(console.log).params(Junjo.args(0), Junjo.callback).after().timeout(1),
   //jj(console.log).params(Junjo.args(0), Junjo.callback).after().timeout(0.1),
 
+  // catcher
   jj(function(e, jfn) {
+    console.log(e.message);
     jj.terminate();
   }).catchesAbove()
 );

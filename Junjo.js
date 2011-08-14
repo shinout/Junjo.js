@@ -167,7 +167,7 @@ Junjo.prototype.register = function(arr) {
       });
       a_aboves = [];
     }
-    else if (jfn._after_prev && prev_lbl) {
+    else if (jfn._after_prev && prev_lbl != undefined) {
       jfn.after(prev_lbl);
     }
 
@@ -177,7 +177,7 @@ Junjo.prototype.register = function(arr) {
       });
       c_aboves = [];
     }
-    else if (jfn._catch_prev && prev_lbl) {
+    else if (jfn._catch_prev && prev_lbl != undefined) {
       jfn.catches(prev_lbl);
     }
 
