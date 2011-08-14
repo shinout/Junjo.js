@@ -78,19 +78,6 @@ const Junjo = function(options) {
  */
 Junjo.prototype.terminate = function() {
   this._terminated = true;
-
-  // clear timeout of every checker
-  Object.keys(this._fncs).forEach(function(lbl) {
-    var timeout_id = this._fncs[lbl]._timeout_id;
-    if (timeout_id) {
-      clearTimeout(timeout_id);
-      this._fncs[lbl]._timeout_id = null;
-    }
-  }, this);
-
-  this._errorEnds.forEach(function(fn) {
-    fn.call(this);
-  }, this);
 };
 
 /**
@@ -298,6 +285,23 @@ Junjo.privates.result = function(lbl, val) {
   return true;
 };
 
+Junjo.privates.onTerminate = function() {
+  var self = this;
+  var bool = Object.keys(self._fncs).every(function(lbl) {
+    var jfn = self._fncs[lbl];
+    return jfn._cb_called || jfn._cb_accessed == jfn._cb_called
+  });
+  if (!bool) return;
+
+  self._errorEnds.forEach(function(fn) {
+    fn.call(self);
+  }, self);
+};
+
+/***
+ * Junjo.Func
+ * function wrapper
+ **/
 Junjo.Func = function(fn, junjo) {
   this._func        = fn;    // registered function
   this._junjo       = junjo; // instanceof Junjo
@@ -472,19 +476,20 @@ Junjo.Func.prototype.execute = function() {
 };
 
 Junjo.Func.prototype._callback = function() {
-  if (this._junjo._terminated) {
-    return;
-  } // global-terminated filter
-
   if (!this._done || this._cb_called) return; // already-called-or-cannot-call filter
-
-  this._cb_called = true;
-  var args = arguments;
 
   if (this._timeout_id) {
     clearTimeout(this._timeout_id); // remove tracing callback
     this._timeout_id = null;
   }
+  this._cb_called = true;
+
+  if (this._junjo._terminated) {
+    Junjo.privates.onTerminate.call(this._junjo);
+    return;
+  } // global-terminated filter
+
+  var args = arguments;
 
   var next = (this._error) 
     ? (this._catcher) 
