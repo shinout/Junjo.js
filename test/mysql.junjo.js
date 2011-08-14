@@ -24,17 +24,18 @@ jj.run(
   jj(client.query).bind(client, 'select * from ' + TBL_NAME, Junjo.callback)
   .catchAt('mysqlError').label('select'),
 
-  jj(console.log).params(Junjo.args(1)).after(),
 
   jj(console.log).params(Junjo.results('select', 1, 3, 'name')).after('select'),
 
   jj(function() {
-    console.log(this.args(2).id);
+    console.log('field', this.args(2).id);
+    return "NEXT VALUE";
   }).after("select"),
 
+  jj(console.log).params(Junjo.args(0), Junjo.callback).after().timeout(1),
+  //jj(console.log).params(Junjo.args(0), Junjo.callback).after().timeout(0.1).catchAt('mysqlError'),
+
   jj('mysqlError', function(e, jfn) {
-    console.log("from label " + jfn.label());
-    console.log(e.stack);
     jj.terminate();
   })
 );

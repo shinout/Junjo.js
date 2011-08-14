@@ -39,6 +39,9 @@ const Junjo = function(options) {
   fJunjo._successEnds = [];
   fJunjo._errorEnds   = [];
   fJunjo._runnable    = true;
+  fJunjo._timeout     = 5;
+
+  if (typeof options.timeout == "number") fJunjo._timeout = options.timeout;
 
   if (typeof options.onEnd == "function") fJunjo.onEnd(options.onEnd);
 
@@ -285,6 +288,7 @@ Junjo.Func = function(fn, junjo) {
     var args = arguments;
     if (!self._done || self._cb_called) return;
     self._cb_called = true;
+    if (self._timeout_id) clearTimeout(self._timeout_id);
     if (self._error) {
       Junjo.privates.raiseError.call(self._junjo, arguments[0], self);
       return;
@@ -315,6 +319,7 @@ Junjo.Func = function(fn, junjo) {
   this._error       = false; // error occurred or not
   this._cb_accessed = false; // whether callback is accessed via "this.callback", this means asynchronous.
   this._cb_called   = false; // whether callback is called or not
+  this._timeout_id  = null;  // id of timeout checking function
 
   Object.defineProperty(this, 'callback', {
     get: function() {
@@ -361,6 +366,11 @@ Junjo.Func.prototype.after = function() {
     this._counter++;
     this._afters.push(v);
   }, this);
+  return this;
+};
+
+Junjo.Func.prototype.timeout = function(v) {
+  if (typeof v == "number") this._timeout = v;
   return this;
 };
 
@@ -412,6 +422,19 @@ Junjo.Func.prototype.execute = function() {
     this._done = true;
     if (!this._cb_accessed) { // synchronous
       this._callback(ret);
+    }
+    else { // checking if the callback is called in the function with in timeout[sec]
+      var timeout = this._timeout || this._junjo._timeout;
+      if (timeout) {
+        var self = this;
+        this._timeout_id = setTimeout(function() {
+          if (!self._cb_called) {
+            self._done = true;
+            self._error = true;
+            self._callback(new Error('callback wasn\'t called within '+timeout+' [sec] in function ' + self.label() + '.' ));
+          }
+        }, timeout * 1000);
+      }
     }
   }
   catch (e) {
