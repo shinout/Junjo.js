@@ -6,7 +6,8 @@ function junjo_test() {
     consolelog(name);
     setTimeout(function() {
       consolelog('\t' + name + ' + ' + n + ' [sec]');
-      cb(null, name);
+			var err = (name == "2nd") ? new Error(name + ": error...") : null;
+      cb(err, name);
     }, n);
   }
 
@@ -30,7 +31,9 @@ function junjo_test() {
   }
 
   const J = (node) ? require('../Junjo') : Junjo;
-  var jj = new J();
+  var jj = new J({
+    nodeCallback: true
+	});
 
   jj.register(
     jj('1st', function() {

@@ -40,8 +40,11 @@ const Junjo = function(options) {
   fJunjo._errorEnds   = [];
   fJunjo._runnable    = true;
   fJunjo._timeout     = 5;
+  fJunjo._node_cb     = false;
 
   if (typeof options.timeout == "number") fJunjo._timeout = options.timeout;
+
+  if (typeof options.nodeCallback == "boolean") fJunjo._node_cb = options.nodeCallback;
 
   if (typeof options.onEnd == "function") fJunjo.onEnd(options.onEnd);
 
@@ -303,26 +306,27 @@ Junjo.privates.onTerminate = function() {
  * function wrapper
  **/
 Junjo.Func = function(fn, junjo) {
-  this._func        = fn;    // registered function
-  this._junjo       = junjo; // instanceof Junjo
-  this._callbacks   = [];    // callback functions
-  this._args        = [];    // arguments passed from each dependent functions
-  this._afters      = [];    // labels of functions executed before this function
-  this._after_prev  = false; // if true, executed after the previously registered function
-  this._after_above = false; // if true, executed after all the registered function above.
-  this._params      = [];    // parameters to be given to the function. if empty, original callback arguments is used.
-  this._scope       = null;  // "this" scope to execute. if empty, the instance of Junjo.Func is set.
-  this._catcher     = null;  // execute when the function throws an error.
-  this._catches     = [];    // Array of labels. If the function with the label throws an error, this function will rescue().
-  this._catch_prev  = false; // catches previous function or not.
-  this._catch_above = false; // catches all functions registered before.
-  this._timeout_id  = null;  // id of timeout checking function
-  this._counter     = 0;     // until 0, decremented per each call, then execution starts.
-  this._called      = false; // execution started or not
-  this._done        = false; // execution ended or not
-  this._error       = false; // error occurred or not
-  this._cb_accessed = false; // whether callback is accessed via "this.callback", this means asynchronous.
-  this._cb_called   = false; // whether callback is called or not
+  this._func        = fn;             // registered function
+  this._junjo       = junjo;          // instanceof Junjo
+  this._callbacks   = [];             // callback functions
+  this._args        = [];             // arguments passed from each dependent functions
+  this._afters      = [];             // labels of functions executed before this function
+  this._after_prev  = false;          // if true, executed after the previously registered function
+  this._after_above = false;          // if true, executed after all the registered function above.
+  this._params      = [];             // parameters to be given to the function. if empty, original callback arguments is used.
+  this._scope       = null;           // "this" scope to execute. if empty, the instance of Junjo.Func is set.
+  this._catcher     = null;           // execute when the function throws an error.
+  this._catches     = [];             // Array of labels. If the function with the label throws an error, this function will rescue().
+  this._catch_prev  = false;          // catches previous function or not.
+  this._catch_above = false;          // catches all functions registered before.
+  this._timeout_id  = null;           // id of timeout checking function
+  this._counter     = 0;              // until 0, decremented per each call, then execution starts.
+  this._called      = false;          // execution started or not
+  this._done        = false;          // execution ended or not
+  this._error       = false;          // error occurred or not
+  this._cb_accessed = false;          // whether callback is accessed via "this.callback", this means asynchronous.
+  this._cb_called   = false;          // whether callback is called or not
+  this._node_cb     = junjo._node_cb; // node-style callback or not
 
   Object.defineProperty(this, 'callback', {
     get: function() {
@@ -373,6 +377,11 @@ Junjo.Func.prototype.after = function() {
 
 Junjo.Func.prototype.afterAbove = function(bool) {
   this._after_above = (bool !== false);
+  return this;
+};
+
+Junjo.Func.prototype.nodeCallback = function(bool) {
+  this._node_cb = (bool !== false);
   return this;
 };
 
@@ -490,6 +499,11 @@ Junjo.Func.prototype._callback = function() {
   } // global-terminated filter
 
   var args = arguments;
+  if (this._node_cb) {
+    if (!this._error && this._cb_accessed && args[0]) { // when asynchronous call was succeed
+      this._error = args[0];
+    }
+  }
 
   var next = (this._error) 
     ? (this._catcher) 
