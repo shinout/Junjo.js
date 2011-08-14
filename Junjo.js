@@ -203,31 +203,37 @@ Junjo.prototype.run = function() {
   return this;
 };
 
-Junjo.Constant = function(keypath){
-  Object.defineProperty(this, 'keypath', { value :keypath, writable: false });
+Junjo.KeyPath = function(arr) {
+  if (! (arr instanceof Array)) 
+    arr = Array.prototype.map.call(arguments, function(v) { return v;});
+  Object.defineProperty(this, 'keypath', { value :arr, writable: false });
 };
-Junjo.Constant.prototype.get = function(obj) {
+
+Junjo.KeyPath.prototype.get = function(obj) {
   return this.keypath.reduce(function(o, k) {
+    if (o == null || (typeof o != 'object' && o[k] == null)) return null;
     return o[k];
   }, obj);
 };
 
 Object.defineProperty(Junjo, 'callback', {
-  value : new Junjo.Constant(['callback']),
+  value : new Junjo.KeyPath('callback'),
   writable: false
 });
 
-Object.defineProperty(Junjo, '_args', {
-  value: {},
-  writable : false
-});
+Junjo.results = function(lbl) {
+  if (!lbl) return;
+  var arr = Array.prototype.map.call(arguments, function(v) { return v;});
+  arr.unshift('_junjo', '_results');
+  return new Junjo.KeyPath(arr);
+};
 
 Junjo.args = function(i) {
   var iInt = parseInt(i);
   if (isNaN(iInt) || i == null) return;
-  if (!Junjo._args[iInt])
-    Junjo._args[iInt] = new Junjo.Constant(['_args', i]);
-  return Junjo._args[iInt];
+  var arr = Array.prototype.map.call(arguments, function(v) { return v;});
+  arr.unshift('_args');
+  return new Junjo.KeyPath(arr);
 };
 
 // private functions 
@@ -294,6 +300,7 @@ Junjo.Func = function(fn, junjo) {
   };
 
   this._func        = fn;
+  this._args        = [];
   this._afters      = [];
   this._after_prev  = false;
   this._callbacks   = [];
@@ -378,7 +385,9 @@ Junjo.Func.prototype.label = function(v) {
 };
 
 Junjo.Func.prototype.execute = function() {
-  this._args = arguments;
+  Array.prototype.forEach.call(arguments, function(v) {
+    this._args.push(v);
+  }, this);
   if (this._junjo._error && !this._isCatcher) return;
   if (--this._counter > 0) return;
   if (this._called && !this._isCatcher) return;
@@ -388,7 +397,7 @@ Junjo.Func.prototype.execute = function() {
 	var len = this._params.length;
 	if (len) {
     this._params.forEach(function(v, k) {
-      if (v instanceof Junjo.Constant) {
+      if (v instanceof Junjo.KeyPath) {
         this._params[k] = v.get(this);
       }
     }, this);

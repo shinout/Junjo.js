@@ -22,9 +22,11 @@ jj.run(
   jj(client.query).bind(client, 'use ' + DB_NAME, Junjo.callback).catchAt('mysqlError'),
 
   jj(client.query).bind(client, 'select * from ' + TBL_NAME, Junjo.callback)
-  .catchAt('mysqlError'),
+  .catchAt('mysqlError').label('select'),
 
   jj(console.log).params(Junjo.args(1)).after(),
+
+  jj(console.log).params(Junjo.results('select', 1, 3, 'name')).after('select'),
 
   jj('mysqlError', function(e, jfn) {
     console.log("from label " + jfn.label());
