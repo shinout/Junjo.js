@@ -335,6 +335,11 @@ Junjo.Func.prototype.bind = function() {
 	return this.params.apply(this, arguments);
 };
 
+Junjo.Func.prototype.args = function(k) {
+  if (k != null && !isNaN(Number(k))) return this._args[k];
+  return this._args;
+};
+
 Junjo.Func.prototype.params = function() {
   Array.prototype.forEach.call(arguments, function(v) {
     this._params.push(v);

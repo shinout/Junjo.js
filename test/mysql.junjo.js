@@ -28,6 +28,10 @@ jj.run(
 
   jj(console.log).params(Junjo.results('select', 1, 3, 'name')).after('select'),
 
+  jj(function() {
+    console.log(this.args(2).id);
+  }).after("select"),
+
   jj('mysqlError', function(e, jfn) {
     console.log("from label " + jfn.label());
     console.log(e.stack);
