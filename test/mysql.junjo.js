@@ -18,14 +18,13 @@ const jj = new Junjo({
 });
 
 jj.run(
-  //jj(client.query).scope(client).params('use ' + DB_NAME, Junjo.callback).catchAt('mysqlError'),
-  jj(client.query).bind(client, 'use ' + DB_NAME, Junjo.callback).catchAt('mysqlError'),
+  //jj(client.query).scope(client).params('use ' + DB_NAME, Junjo.callback),
+  jj(client.query).bind(client, 'use ' + DB_NAME, Junjo.callback),
 
   jj(client.query).bind(client, 'select * from ' + TBL_NAME, Junjo.callback)
-  .catchAt('mysqlError').label('select'),
+  .label('select'),
 
-
-  jj(console.log).params(Junjo.results('select', 1, 3, 'name')).after('select'),
+  jj(console.log).params(Junjo.results('select', 1, 3, 'name')).afterAbove(),
 
   jj(function() {
     console.log('field', this.args(2).id);
@@ -33,9 +32,9 @@ jj.run(
   }).after("select"),
 
   jj(console.log).params(Junjo.args(0), Junjo.callback).after().timeout(1),
-  //jj(console.log).params(Junjo.args(0), Junjo.callback).after().timeout(0.1).catchAt('mysqlError'),
+  //jj(console.log).params(Junjo.args(0), Junjo.callback).after().timeout(0.1),
 
-  jj('mysqlError', function(e, jfn) {
+  jj(function(e, jfn) {
     jj.terminate();
-  })
+  }).catchesAbove()
 );

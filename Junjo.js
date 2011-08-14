@@ -30,7 +30,7 @@ const Junjo = function(options) {
   fJunjo._fncs        = {};
   fJunjo._entries     = {};
   fJunjo._results     = {};
-  fJunjo._error       = false;
+  fJunjo._terminated  = false;
   fJunjo._funcs_count = 0; // the number of registered functions without catchers.
   fJunjo._finished    = 0;
   fJunjo._succeeded   = 0;
@@ -76,8 +76,21 @@ const Junjo = function(options) {
  *
  * call it in catcher functions
  */
-Junjo.prototype.terminate = function(v) {
-  this._error = (v === undefined || v) ? true : false;
+Junjo.prototype.terminate = function() {
+  this._terminated = true;
+
+  // clear timeout of every checker
+  Object.keys(this._fncs).forEach(function(lbl) {
+    var timeout_id = this._fncs[lbl]._timeout_id;
+    if (timeout_id) {
+      clearTimeout(timeout_id);
+      this._fncs[lbl]._timeout_id = null;
+    }
+  }, this);
+
+  this._errorEnds.forEach(function(fn) {
+    fn.call(this);
+  }, this);
 };
 
 /**
@@ -86,12 +99,13 @@ Junjo.prototype.terminate = function(v) {
  * you can change it by giving "defaultCatcher" options in constructer like :
  *  new Junjo({defaultCatcher: function(e) {
  *    console.log("custom default catcher");
- *    this.terminte();
+ *    this.terminate();
  *  });
  */
 Junjo.prototype.defaultCatcher = function(e) {
-  this.terminate();
   console.error(e.stack || e.message || e);
+  this.terminate();
+  return false;
 };
 
 /**
@@ -105,7 +119,7 @@ Junjo.prototype.on = function(evtname, fn) {
 
   case 'error': 
   case 'errorend': 
-    this.errorEnd(fn);
+    this.onErrorEnd(fn);
     break;
 
   case 'success': 
@@ -151,15 +165,34 @@ Junjo.prototype.register = function(arr) {
     return (v instanceof Junjo.Func);
   });
 
-  var prev_lbl;
+  var prev_lbl, a_aboves = [], c_aboves = [];
   arr.forEach(function(jfn, k) {
     if (!jfn.label()) jfn._label = k;
     fncs[jfn.label()] = jfn;
-    if (!jfn._isCatcher) this._funcs_count++; 
-    if (jfn._after_prev && prev_lbl) {
-      jfn._after_prev = false;
-      jfn._afters.push(prev_lbl);
+    if (!jfn.isCatcher()) this._funcs_count++; 
+
+    if (jfn._after_above) {
+      a_aboves.forEach(function(lbl) {
+        jfn.after(lbl);
+      });
+      a_aboves = [];
     }
+    else if (jfn._after_prev && prev_lbl) {
+      jfn.after(prev_lbl);
+    }
+
+    if (jfn._catch_above) {
+      c_aboves.forEach(function(lbl) {
+        jfn.catches(lbl);
+      });
+      c_aboves = [];
+    }
+    else if (jfn._catch_prev && prev_lbl) {
+      jfn.catches(prev_lbl);
+    }
+
+    a_aboves.push(jfn.label());
+    c_aboves.push(jfn.label());
     prev_lbl = jfn._label;
   }, this);
 
@@ -171,19 +204,20 @@ Junjo.prototype.register = function(arr) {
   arr.forEach(function(jfn, k) {
     jfn._afters.forEach(function(lbl) {
       if (!fncs[lbl]) throw new Error('label "' + lbl  + '" is not defined.');
+      if (fncs[lbl].isCatcher()) return; // TODO throw an error
+      jfn._counter++;
       fncs[lbl]._callbacks.push(jfn);
-    }, this);
+    });
 
-    if (jfn._catchAt && fncs[jfn._catchAt]) {
-      if (!fncs[jfn._catchAt]._isCatcher) {
-        fncs[jfn._catchAt].isCatcher();
-        this._funcs_count--;
-      }
-    }
-  }, this);
+    jfn._catches.forEach(function(lbl) {
+      if (!fncs[lbl]) throw new Error('label "' + lbl  + '" is not defined.');
+      if (fncs[lbl].isCatcher()) return; // TODO throw an error
+      if (!fncs[lbl]._catcher) fncs[lbl]._catcher = jfn;
+    });
+  });
 
   this._entries = arr.filter(function(jfn) {
-    return (!jfn._afters.length && !jfn._isCatcher);
+    return (!jfn._afters.length && !jfn.isCatcher());
   }).map(function(jfn) {
     return jfn.label();
   });
@@ -242,31 +276,15 @@ Junjo.args = function(i) {
 // private functions 
 Junjo.privates = {};
 
-Junjo.privates.raiseError = function(e, jfn) {
+Junjo.privates.finished = function(jfn) {
   this._finished++;
-  if (jfn._catchAt && this._fncs[jfn._catchAt]) {
-    var catcher = this._fncs[jfn._catchAt];
-    catcher._params = [e, jfn];
-    catcher.execute();
-  }
-  else {
-    this.defaultCatcher(e, jfn);
-  }
 
-  Junjo.privates.endIfFinished.call(this);
-  if (this._error) {
-    this._errorEnds.forEach(function(fn) {
+  if (this._finished == this._funcs_count) {
+    this._ends.forEach(function(fn) {
       fn.call(this);
     }, this);
   }
-};
 
-Junjo.privates.result = function(lbl, val) {
-  this._finished++;
-  this._succeeded++;
-  this._results[lbl] = val;
-
-  Junjo.privates.endIfFinished.call(this);
   if (this._succeeded == this._funcs_count) {
     this._successEnds.forEach(function(fn) {
       fn.call(this);
@@ -274,57 +292,38 @@ Junjo.privates.result = function(lbl, val) {
   }
 };
 
-Junjo.privates.endIfFinished = function() {
-  if (this._finished == this._funcs_count) {
-    this._ends.forEach(function(fn) {
-      fn.call(this);
-    }, this);
-  }
+Junjo.privates.result = function(lbl, val) {
+  this._succeeded++;
+  this._results[lbl] = val;
+  return true;
 };
 
 Junjo.Func = function(fn, junjo) {
-  var self = this;
-  this._callback = function() {
-    var args = arguments;
-    if (!self._done || self._cb_called) return;
-    self._cb_called = true;
-    if (self._timeout_id) clearTimeout(self._timeout_id);
-    if (self._error) {
-      Junjo.privates.raiseError.call(self._junjo, arguments[0], self);
-      return;
-    }
-
-    Junjo.privates.result.call(self._junjo, self.label(), 
-      (self._cb_accessed) ? args : args[0]
-    );
-
-    self._callbacks.forEach(function(cb_jfn) {
-      cb_jfn.execute.apply(cb_jfn, args);
-    });
-  };
-
-  this._func        = fn;
-  this._args        = [];
-  this._afters      = [];
-  this._after_prev  = false;
-  this._callbacks   = [];
-  this._scope       = null;  // "this" scope to execute. if empty, the instance of Junjo.Func is set.
-  this._params      = [];    // parameters to be given to the function. if empty, original callback arguments is used.
+  this._func        = fn;    // registered function
   this._junjo       = junjo; // instanceof Junjo
-  this._counter     = 1;     // until 0, decremented per each call, then execution starts.
-  this._catchAt     = null;  // the name of catcher 
-  this._isCatcher   = false; // is catcher or not
+  this._callbacks   = [];    // callback functions
+  this._args        = [];    // arguments passed from each dependent functions
+  this._afters      = [];    // labels of functions executed before this function
+  this._after_prev  = false; // if true, executed after the previously registered function
+  this._after_above = false; // if true, executed after all the registered function above.
+  this._params      = [];    // parameters to be given to the function. if empty, original callback arguments is used.
+  this._scope       = null;  // "this" scope to execute. if empty, the instance of Junjo.Func is set.
+  this._catcher     = null;  // execute when the function throws an error.
+  this._catches     = [];    // Array of labels. If the function with the label throws an error, this function will rescue().
+  this._catch_prev  = false; // catches previous function or not.
+  this._catch_above = false; // catches all functions registered before.
+  this._timeout_id  = null;  // id of timeout checking function
+  this._counter     = 0;     // until 0, decremented per each call, then execution starts.
   this._called      = false; // execution started or not
   this._done        = false; // execution ended or not
   this._error       = false; // error occurred or not
   this._cb_accessed = false; // whether callback is accessed via "this.callback", this means asynchronous.
   this._cb_called   = false; // whether callback is called or not
-  this._timeout_id  = null;  // id of timeout checking function
 
   Object.defineProperty(this, 'callback', {
     get: function() {
-      this._cb_accessed = true;
-      return this._callback;
+      this._cb_accessed = true; // if accessed, then the function is regarded asynchronous.
+      return this._callback.bind(this);
     },
     set: function() { }
   });
@@ -361,11 +360,15 @@ Junjo.Func.prototype.after = function() {
     this._after_prev = false;
   }
 
-  this._counter = 0;
   Array.prototype.forEach.call(arguments, function(v) {
-    this._counter++;
+    if (this._afters.indexOf(v) >= 0) return;
     this._afters.push(v);
   }, this);
+  return this;
+};
+
+Junjo.Func.prototype.afterAbove = function(bool) {
+  this._after_above = (bool !== false);
   return this;
 };
 
@@ -374,14 +377,28 @@ Junjo.Func.prototype.timeout = function(v) {
   return this;
 };
 
-Junjo.Func.prototype.catchAt = function(v) {
-  this._catchAt = v;
+Junjo.Func.prototype.catches = function() {
+  if (arguments.length == 0) {
+    this._catch_prev = true;
+    return this;
+  }
+  else {
+    this._catch_prev = false;
+  }
+  Array.prototype.forEach.call(arguments, function(v) {
+    // if (this._catches.indexOf(v) >= 0) return; // not necessary to be unique.
+    this._catches.push(v);
+  }, this);
+  return this;
+};
+
+Junjo.Func.prototype.catchesAbove = function(bool) {
+  this._catch_above = (bool !== false);
   return this;
 };
 
 Junjo.Func.prototype.isCatcher = function() {
-  this._isCatcher = true;
-  return this;
+  return this._catch_above || this._catch_prev || this._catches.length;
 };
 
 Junjo.Func.prototype.scope = function(v) {
@@ -399,50 +416,99 @@ Junjo.Func.prototype.label = function(v) {
   }
 };
 
+// execute the function and its callback, whatever happens.
 Junjo.Func.prototype.execute = function() {
+  // filters
+  if (this._junjo._terminated) return; // global-terminated filter
+  if (this._called) return; // execute-only-one-time filter
+  if (this.isCatcher()) return; // catcher filter
+
   Array.prototype.forEach.call(arguments, function(v) {
     this._args.push(v);
   }, this);
-  if (this._junjo._error && !this._isCatcher) return;
-  if (--this._counter > 0) return;
-  if (this._called && !this._isCatcher) return;
-  this._called = true;
-  var scope = this._scope || this;
+  if (--this._counter > 0) return; // dependency filter
 
+
+  // preparation
+  this._called = true;
+  var scope = this._scope || this; // "this" scope
 	var len = this._params.length;
 	if (len) {
     this._params.forEach(function(v, k) {
       if (v instanceof Junjo.KeyPath) {
-        this._params[k] = v.get(this);
+        this._params[k] = v.get(this); // translate keypath
       }
     }, this);
 	}
+
+  // execution
   try {
-    var ret = this._func.apply(scope, (len) ? this._params : this._args)
+    var ret = this._func.apply(scope, (len) ? this._params : this._args);
     this._done = true;
-    if (!this._cb_accessed) { // synchronous
+    if (!this._cb_accessed) { // if true, regarded as synchronous function.
       this._callback(ret);
     }
     else { // checking if the callback is called in the function with in timeout[sec]
+      if (this._junjo._terminated) return;
+
       var timeout = this._timeout || this._junjo._timeout;
-      if (timeout) {
-        var self = this;
-        this._timeout_id = setTimeout(function() {
-          if (!self._cb_called) {
-            self._done = true;
-            self._error = true;
-            self._callback(new Error('callback wasn\'t called within '+timeout+' [sec] in function ' + self.label() + '.' ));
-          }
-        }, timeout * 1000);
-      }
+      if (!timeout) return;
+
+      var self = this;
+      this._timeout_id = setTimeout(function() {
+        if (!self._cb_called) {
+          self._done = true;
+          self._error = new Error('callback wasn\'t called within '+timeout+' [sec] in function ' + self.label() + '.' );
+          self._callback();
+        }
+      }, timeout * 1000);
     }
   }
   catch (e) {
     this._done = true;
-    this._error = true;
-    this._callback(e); // called when this callback was not called.
+    this._error = e;
+    this._callback(); // called when this callback was not called.
   }
 };
+
+Junjo.Func.prototype._callback = function() {
+  if (this._junjo._terminated) {
+    return;
+  } // global-terminated filter
+
+  if (!this._done || this._cb_called) return; // already-called-or-cannot-call filter
+
+  this._cb_called = true;
+  var args = arguments;
+
+  if (this._timeout_id) {
+    clearTimeout(this._timeout_id); // remove tracing callback
+    this._timeout_id = null;
+  }
+
+  var next = (this._error) 
+    ? (this._catcher) 
+      ? this._catcher.rescue(this._error, this)
+      : this._junjo.defaultCatcher(this._error, this)
+
+    : Junjo.privates.result.call(this._junjo, this.label(),
+        (this._cb_accessed) ? args : args[0]
+      );
+
+  Junjo.privates.finished.call(this._junjo, this); // check if finished or not.
+
+  if (next) {
+    this._callbacks.forEach(function(cb_jfn) {
+      cb_jfn.execute.apply(cb_jfn, args);
+    });
+  }
+};
+
+Junjo.Func.prototype.rescue = function(e, jfn) {
+  if (!this.isCatcher()) return;
+  return this._func(e, jfn);
+};
+
 
 Object.getOwnPropertyNames(Function.prototype).forEach(function(k) {
   Junjo.prototype[k] = Function.prototype[k];

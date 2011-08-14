@@ -30,16 +30,25 @@ function junjo_test() {
   }
 
   const J = (node) ? require('../Junjo') : Junjo;
-  var jj = new J();
+  var jj = new J({
+    timeout: 2
+  });
 
   jj.register(
     jj('1st', function() {
+      throw new Error(this.label() + " Error.");
       asyncMethod(this.label(), 10, this.callback);
     }),
 
     jj('2nd', function() {
+      throw new Error(this.label() + " Error.");
       asyncMethod(this.label(), 20, this.callback);
     }),
+
+    jj('c1', function(e, jfn) {
+      console.log("CATCHING");
+      return true;
+    }).catchesAbove(),
 
     jj('3rd', function() {
       asyncMethod(this.label(), 5, this.callback);
@@ -51,6 +60,7 @@ function junjo_test() {
 
     jj('5th', function() {
       asyncMethod(this.label(), 20, this.callback);
+      jj.terminate();
     }).after('1st', '2nd'),
 
     jj('6th', function() {
@@ -74,9 +84,11 @@ function junjo_test() {
   jj.on('end', function() {
     consolelog("END");
   });
-
   jj.on('success', function() {
     consolelog("success");
+  });
+  jj.on('error', function() {
+    consolelog("error end");
   });
   jj.run();
 }
