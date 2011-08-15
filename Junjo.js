@@ -493,11 +493,6 @@ Junjo.Func.prototype._callback = function() {
   }
   this._cb_called = true;
 
-  if (this._junjo._terminated) {
-    Junjo.privates.onTerminate.call(this._junjo);
-    return;
-  } // global-terminated filter
-
   var args = arguments;
   if (this._node_cb) {
     if (!this._error && this._cb_accessed && args[0]) { // when asynchronous call was succeed
@@ -515,6 +510,12 @@ Junjo.Func.prototype._callback = function() {
       );
 
   Junjo.privates.finished.call(this._junjo, this); // check if finished or not.
+
+  if (this._junjo._terminated) {
+    Junjo.privates.onTerminate.call(this._junjo);
+    return;
+  }
+
 
   if (next) {
     this._callbacks.forEach(function(cb_jfn) {
