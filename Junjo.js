@@ -30,6 +30,8 @@ const Junjo = function(options) {
   fJunjo._fncs        = {};
   fJunjo._entries     = {};
   fJunjo._results     = {};
+  fJunjo._out         = null;
+  fJunjo._err         = null;
   fJunjo._terminated  = false;
   fJunjo._funcs_count = 0; // the number of registered functions without catchers.
   fJunjo._finished    = 0;
@@ -230,6 +232,58 @@ Junjo.prototype.run = function() {
   return this;
 };
 
+Junjo.prototype.out = function(v) {
+	if (v === undefined) return this._out;
+	this._out = v;
+	return this;
+};
+
+Junjo.prototype.err = function(v) {
+	if (v === undefined) return this._err;
+	this._err = v;
+	return this;
+};
+
+// private functions 
+Junjo.privates = {};
+
+Junjo.privates.finished = function(jfn) {
+  this._finished++;
+
+  if (this._finished == this._funcs_count) {
+		var err = this._err || (this._succeeded != this._funcs_count) ? true : null;
+    this._ends.forEach(function(fn) {
+      fn.call(this, err, this._out);
+    }, this);
+  }
+
+  if (this._succeeded == this._funcs_count) {
+    this._successEnds.forEach(function(fn) {
+      fn.call(this, this._out);
+    }, this);
+  }
+};
+
+Junjo.privates.onTerminate = function() {
+  var self = this;
+  var bool = Object.keys(self._fncs).every(function(lbl) {
+    var jfn = self._fncs[lbl];
+    return jfn._cb_called || jfn._cb_accessed == jfn._cb_called
+  });
+  if (!bool) return;
+
+  self._errorEnds.forEach(function(fn) {
+    fn.call(self, self._err || true, self._out);
+  }, self);
+};
+
+Junjo.privates.result = function(lbl, val) {
+  this._succeeded++;
+  this._results[lbl] = val;
+  return true;
+};
+
+
 Junjo.KeyPath = function(arr) {
   if (! (arr instanceof Array)) 
     arr = Array.prototype.map.call(arguments, function(v) { return v;});
@@ -261,44 +315,6 @@ Junjo.args = function(i) {
   var arr = Array.prototype.map.call(arguments, function(v) { return v;});
   arr.unshift('_args');
   return new Junjo.KeyPath(arr);
-};
-
-// private functions 
-Junjo.privates = {};
-
-Junjo.privates.finished = function(jfn) {
-  this._finished++;
-
-  if (this._finished == this._funcs_count) {
-    this._ends.forEach(function(fn) {
-      fn.call(this);
-    }, this);
-  }
-
-  if (this._succeeded == this._funcs_count) {
-    this._successEnds.forEach(function(fn) {
-      fn.call(this);
-    }, this);
-  }
-};
-
-Junjo.privates.result = function(lbl, val) {
-  this._succeeded++;
-  this._results[lbl] = val;
-  return true;
-};
-
-Junjo.privates.onTerminate = function() {
-  var self = this;
-  var bool = Object.keys(self._fncs).every(function(lbl) {
-    var jfn = self._fncs[lbl];
-    return jfn._cb_called || jfn._cb_accessed == jfn._cb_called
-  });
-  if (!bool) return;
-
-  self._errorEnds.forEach(function(fn) {
-    fn.call(self);
-  }, self);
 };
 
 /***
