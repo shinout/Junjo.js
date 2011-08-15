@@ -12,8 +12,9 @@ const Junjo = function(options) {
        ? Array.prototype.shift.call(arguments)
        : undefined;
 
-    var jfn = new Junjo.Func(arguments[0], fJunjo);
+    var jfn = new Junjo.Func(arguments[0], fJunjo, ++fJunjo._cnt);
     if (label !== undefined) jfn.label(label);
+    fJunjo._jfncs.push(jfn);
     return jfn;
   };
 
@@ -27,8 +28,8 @@ const Junjo = function(options) {
   }
 
   /** private values **/
-  fJunjo._fncs        = {};
-  fJunjo._entries     = {};
+  fJunjo._jfncs       = [];
+  fJunjo._cnt         = 0;
   fJunjo._results     = {};
   fJunjo._out         = null;
   fJunjo._err         = null;
@@ -36,7 +37,6 @@ const Junjo = function(options) {
   fJunjo._funcs_count = 0; // the number of registered functions without catchers.
   fJunjo._finished    = 0;
   fJunjo._succeeded   = 0;
-  fJunjo._registered  = false;
   fJunjo._ends        = [];
   fJunjo._successEnds = [];
   fJunjo._errorEnds   = [];
@@ -145,103 +145,76 @@ Junjo.prototype.results = function(lbl) {
   return this._results[lbl];
 };
 
-/**
- * register a series of processes.
- *
- * @param (Array<Junjo.Func>) arr 
- *  or you can give arguments like
- *  var junjo = new Junjo();
- *  junjo.register(a, b, c);
- *  instead of junjo.register([a, b, c]);
- *
- */
-Junjo.prototype.register = function(arr) {
-  if (! (arr instanceof Array)) {
-    arr = Array.prototype.map.call(arguments, function(v) { return v; });
-  }
-
-  var fncs = this._fncs;
-
-  // register functions
-  arr = arr.filter(function(v) {
-    return (v instanceof Junjo.Func);
-  });
-
-  var prev_lbl, a_aboves = [], c_aboves = [];
-  arr.forEach(function(jfn, k) {
-    var is_catcher = jfn.isCatcher();
-    if (!jfn.label()) jfn._label = k;
-    fncs[jfn.label()] = jfn;
-    if (!is_catcher) this._funcs_count++; 
-
-    if (jfn._after_above) {
-      a_aboves.forEach(function(lbl) {
-        jfn.after(lbl);
-      });
-      a_aboves = [];
-    }
-    else if (jfn._after_prev && prev_lbl != undefined) {
-      jfn.after(prev_lbl);
-    }
-
-    if (jfn._catch_above) {
-      c_aboves.forEach(function(lbl) {
-        jfn.catches(lbl);
-      });
-      c_aboves = [];
-    }
-    else if (jfn._catch_prev && prev_lbl != undefined) {
-      jfn.catches(prev_lbl);
-    }
-
-    if (!is_catcher) {
-      a_aboves.push(jfn.label());
-      c_aboves.push(jfn.label());
-      prev_lbl = jfn._label;
-    }
-  }, this);
-
-  if (arr.length != Object.keys(fncs).length) {
-    throw new Error('there are duplicated label settings.');
-  }
-
-  // register dependencies
-  arr.forEach(function(jfn, k) {
-    jfn._afters.forEach(function(lbl) {
-      if (!fncs[lbl]) throw new Error('label "' + lbl  + '" is not defined.');
-      if (fncs[lbl].isCatcher()) return; // TODO throw an error
-      jfn._counter++;
-      fncs[lbl]._callbacks.push(jfn);
-    });
-
-    jfn._catches.forEach(function(lbl) {
-      if (!fncs[lbl]) throw new Error('label "' + lbl  + '" is not defined.');
-      if (fncs[lbl].isCatcher()) return; // TODO throw an error
-      if (!fncs[lbl]._catcher) fncs[lbl]._catcher = jfn;
-    });
-  });
-
-  this._entries = arr.filter(function(jfn) {
-    return (!jfn._afters.length && !jfn.isCatcher());
-  }).map(function(jfn) {
-    return jfn.label();
-  });
-
-  this._registered = true;
-  return this;
-};
+Junjo.prototype.register = function() {};
 
 Junjo.prototype.run = function() {
-  if (!this._registered) {
-    this.register.apply(this, arguments);
-  }
-
   if (!this._runnable) return this;
+  var self = this;
 
-  // execute
-  this._entries.forEach(function(lbl) {
-    this._fncs[lbl].execute();
-  }, this);
+  //setTimeout(function() {
+    var fncs = {};
+
+    var prev_lbl, a_aboves = [], c_aboves = [];
+
+    self._jfncs.forEach(function(jfn, k) {
+      var is_catcher = jfn.isCatcher();
+      if (!jfn.label()) jfn._label = k;
+      fncs[jfn.label()] = jfn;
+      if (!is_catcher) this._funcs_count++; 
+
+      if (jfn._after_above) {
+        a_aboves.forEach(function(lbl) {
+          jfn.after(lbl);
+        });
+        a_aboves = [];
+      }
+      else if (jfn._after_prev && prev_lbl != undefined) {
+        jfn.after(prev_lbl);
+      }
+
+      if (jfn._catch_above) {
+        c_aboves.forEach(function(lbl) {
+          jfn.catches(lbl);
+        });
+        c_aboves = [];
+      }
+      else if (jfn._catch_prev && prev_lbl != undefined) {
+        jfn.catches(prev_lbl);
+      }
+
+      if (!is_catcher) {
+        a_aboves.push(jfn.label());
+        c_aboves.push(jfn.label());
+        prev_lbl = jfn._label;
+      }
+    }, self);
+
+    if (self._jfncs.length != Object.keys(fncs).length) {
+      throw new Error('there are duplicated label settings.');
+    }
+
+    // register dependencies
+    self._jfncs.forEach(function(jfn, k) {
+      jfn._afters.forEach(function(lbl) {
+        if (!fncs[lbl]) throw new Error('label "' + lbl  + '" is not defined.');
+        if (fncs[lbl].isCatcher()) return; // TODO throw an error
+        jfn._counter++;
+        fncs[lbl]._callbacks.push(jfn);
+      });
+
+      jfn._catches.forEach(function(lbl) {
+        if (!fncs[lbl]) throw new Error('label "' + lbl  + '" is not defined.');
+        if (fncs[lbl].isCatcher()) return; // TODO throw an error
+        if (!fncs[lbl]._catcher) fncs[lbl]._catcher = jfn;
+      });
+    }, self);
+
+    self._jfncs.forEach(function(jfn) {
+      if (!jfn._afters.length && !jfn.isCatcher()) 
+        jfn.execute();
+    }, self);
+  //}, 0);
+
   return this;
 };
 
@@ -279,8 +252,7 @@ Junjo.privates.finished = function(jfn) {
 
 Junjo.privates.onTerminate = function() {
   var self = this;
-  var bool = Object.keys(self._fncs).every(function(lbl) {
-    var jfn = self._fncs[lbl];
+  var bool = self._jfncs.every(function(jfn) {
     return jfn._cb_called || jfn._cb_accessed == jfn._cb_called
   });
   if (!bool) return;
@@ -360,7 +332,9 @@ Junjo.args = function(i) {
  * Junjo.Func
  * function wrapper
  **/
-Junjo.Func = function(fn, junjo) {
+Junjo.Func = function(fn, junjo, id) {
+  Object.defineProperty(this, 'id', { value : id, writable : false });
+
   this._func        = fn;             // registered function
   this._junjo       = junjo;          // instanceof Junjo
   this._callbacks   = [];             // callback functions
