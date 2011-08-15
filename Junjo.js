@@ -43,6 +43,8 @@ const Junjo = function(options) {
   fJunjo._runnable    = true;
   fJunjo._timeout     = 5;
   fJunjo._node_cb     = false;
+  fJunjo._scope       = new Junjo.Scope(fJunjo);
+  fJunjo._current     = null;
 
   if (typeof options.timeout == "number") fJunjo._timeout = options.timeout;
 
@@ -124,6 +126,14 @@ Junjo.prototype.on = function(evtname, fn) {
 Junjo.prototype.onEnd = function(fn) { this._ends.push(fn); };
 Junjo.prototype.onErrorEnd = function(fn) { this._errorEnds.push(fn); };
 Junjo.prototype.onSuccessEnd = function(fn) { this._successEnds.push(fn); };
+
+Object.defineProperty(Junjo.prototype, 'scope', {
+  get: function() {
+    return this._scope;
+  },
+  set: function() {},
+  enumerable: true
+});
 
 /**
  * get result of each process. 
@@ -283,6 +293,32 @@ Junjo.privates.result = function(lbl, val) {
   return true;
 };
 
+Junjo.Scope = function(junjo) {
+  Object.defineProperty(this, 'junjo', {value: junjo, writable: false});
+
+  // TODO set this function in prototype
+  Object.defineProperty(this, 'callback', {
+    get : function() {
+      var current = this.junjo._current;
+      if (!current) return function(){};
+      current._cb_accessed = true; // if accessed, then the function is regarded asynchronous.
+      return current._callback.bind(current);
+    },
+    set : function() {},
+    enumerable: true
+  });
+
+  Object.defineProperty(this, 'label', {
+    get : function() {
+      var current = this.junjo._current;
+      if (!current) return null;
+      return current.label();
+    },
+    set : function() {},
+    enumerable: true
+  });
+
+};
 
 Junjo.KeyPath = function(arr) {
   if (! (arr instanceof Array)) 
@@ -330,7 +366,7 @@ Junjo.Func = function(fn, junjo) {
   this._after_prev  = false;          // if true, executed after the previously registered function
   this._after_above = false;          // if true, executed after all the registered function above.
   this._params      = [];             // parameters to be given to the function. if empty, original callback arguments is used.
-  this._scope       = null;           // "this" scope to execute. if empty, the instance of Junjo.Func is set.
+  this._scope       = junjo._scope;   // "this" scope to execute.
   this._catcher     = null;           // execute when the function throws an error.
   this._catches     = [];             // Array of labels. If the function with the label throws an error, this function will rescue().
   this._catch_prev  = false;          // catches previous function or not.
@@ -344,17 +380,10 @@ Junjo.Func = function(fn, junjo) {
   this._cb_called   = false;          // whether callback is called or not
   this._node_cb     = junjo._node_cb; // node-style callback or not
 
-  Object.defineProperty(this, 'callback', {
-    get: function() {
-      this._cb_accessed = true; // if accessed, then the function is regarded asynchronous.
-      return this._callback.bind(this);
-    },
-    set: function() { }
-  });
 };
 
 Junjo.Func.prototype.scope = function(scope) {
-	this._scope = scope || this;
+  if (scope != null && typeof scope == 'object') this._scope = scope;
 	return this;
 };
 
@@ -445,6 +474,7 @@ Junjo.Func.prototype.label = function(v) {
   }
 };
 
+
 // execute the function and its callback, whatever happens.
 Junjo.Func.prototype.execute = function() {
   // filters
@@ -460,7 +490,8 @@ Junjo.Func.prototype.execute = function() {
 
   // preparation
   this._called = true;
-  var scope = this._scope || this; // "this" scope
+  this._junjo._current = this;
+
 	var len = this._params.length;
 	if (len) {
     this._params.forEach(function(v, k) {
@@ -472,7 +503,7 @@ Junjo.Func.prototype.execute = function() {
 
   // execution
   try {
-    var ret = this._func.apply(scope, (len) ? this._params : this._args);
+    var ret = this._func.apply(this._scope, (len) ? this._params : this._args);
     this._done = true;
     if (!this._cb_accessed) { // if true, regarded as synchronous function.
       this._callback(ret);
