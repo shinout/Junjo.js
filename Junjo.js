@@ -287,7 +287,7 @@ const Junjo = (function() {
         var current = _(this.junjo).current;
         if (!current) return function(){};
         _(current).cb_accessed = true; // if accessed, then the function is regarded asynchronous.
-        return current.callback.bind(current);
+        return jCallback.bind(current);
       },
       set : function() {},
       enumerable: true
@@ -459,7 +459,7 @@ const Junjo = (function() {
       var ret = _this.func.apply(_this.scope, (len) ? _this.params : _this.args);
       _this.done = true;
       if (!_this.cb_accessed) { // if true, regarded as synchronous function.
-        this.callback(ret);
+        jCallback.call(this, ret);
       }
       else { // checking if the callback is called in the function with in timeout[sec]
         if (_junjo.terminated) return;
@@ -472,7 +472,7 @@ const Junjo = (function() {
           if (!_this.cb_called) {
             _this.done = true;
             _this.error = new Error('callback wasn\'t called within '+timeout+' [sec] in function ' + self.label() + '.' );
-            self.callback();
+            jCallback.call(self);
           }
         }, timeout * 1000);
       }
@@ -480,11 +480,11 @@ const Junjo = (function() {
     catch (e) {
       _this.done = true;
       _this.error = e;
-      this.callback(); // called when this callback was not called.
+      jCallback.call(this); // called when this callback was not called.
     }
   };
 
-  JFunc.prototype.callback = function() {
+  const jCallback = function() {
     var _this  = _(this);
     var junjo  = _this.junjo;
     var _junjo = _(junjo);
