@@ -22,7 +22,7 @@ const Junjo = (function() {
          ? Array.prototype.shift.call(arguments)
          : undefined;
 
-      var jfn = new Junjo.Func(arguments[0], fJunjo);
+      var jfn = new JFunc(arguments[0], fJunjo);
       if (label !== undefined) jfn.label(label);
       _(fJunjo).jfncs.push(jfn);
       return jfn;
@@ -53,7 +53,7 @@ const Junjo = (function() {
       runnable    : true,
       timeout     : 5,
       node_cb     : false,
-      scope       : new Junjo.Scope(fJunjo),
+      scope       : new Scope(fJunjo),
       current     : null
     };
 
@@ -270,7 +270,7 @@ const Junjo = (function() {
     return true;
   };
 
-  Junjo.Scope = function(junjo) {
+  Scope = function(junjo) {
     Object.defineProperty(this, 'junjo', {value: junjo, writable: false});
 
     // TODO set this function in prototype
@@ -298,10 +298,10 @@ const Junjo = (function() {
   };
 
   /***
-   * Junjo.Func
+   * JFunc
    * function wrapper
    **/
-  Junjo.Func = function(fn, junjo, id) {
+  JFunc = function(fn, junjo, id) {
     this._func        = fn;             // registered function
     this._junjo       = junjo;          // instanceof Junjo
     this._callbacks   = [];             // callback functions
@@ -326,29 +326,29 @@ const Junjo = (function() {
 
   };
 
-  Junjo.Func.prototype.scope = function(scope) {
+  JFunc.prototype.scope = function(scope) {
     if (scope != null && typeof scope == 'object') this._scope = scope;
     return this;
   };
 
-  Junjo.Func.prototype.bind = function() {
+  JFunc.prototype.bind = function() {
     this.scope(Array.prototype.shift.call(arguments));
     return this.params.apply(this, arguments);
   };
 
-  Junjo.Func.prototype.args = function(k) {
+  JFunc.prototype.args = function(k) {
     if (k != null && !isNaN(Number(k))) return this._args[k];
     return this._args;
   };
 
-  Junjo.Func.prototype.params = function() {
+  JFunc.prototype.params = function() {
     Array.prototype.forEach.call(arguments, function(v) {
       this._params.push(v);
     }, this);
     return this;
   };
 
-  Junjo.Func.prototype.after = function() {
+  JFunc.prototype.after = function() {
     if (arguments.length == 0) {
       this._after_prev = true;
       return this;
@@ -364,22 +364,22 @@ const Junjo = (function() {
     return this;
   };
 
-  Junjo.Func.prototype.afterAbove = function(bool) {
+  JFunc.prototype.afterAbove = function(bool) {
     this._after_above = (bool !== false);
     return this;
   };
 
-  Junjo.Func.prototype.nodeCallback = function(bool) {
+  JFunc.prototype.nodeCallback = function(bool) {
     this._node_cb = (bool !== false);
     return this;
   };
 
-  Junjo.Func.prototype.timeout = function(v) {
+  JFunc.prototype.timeout = function(v) {
     if (typeof v == "number") this._timeout = v;
     return this;
   };
 
-  Junjo.Func.prototype.catches = function() {
+  JFunc.prototype.catches = function() {
     if (arguments.length == 0) {
       this._catch_prev = true;
       return this;
@@ -394,21 +394,21 @@ const Junjo = (function() {
     return this;
   };
 
-  Junjo.Func.prototype.catchesAbove = function(bool) {
+  JFunc.prototype.catchesAbove = function(bool) {
     this._catch_above = (bool !== false);
     return this;
   };
 
-  Junjo.Func.prototype.isCatcher = function() {
+  JFunc.prototype.isCatcher = function() {
     return this._catch_above || this._catch_prev || this._catches.length;
   };
 
-  Junjo.Func.prototype.scope = function(v) {
+  JFunc.prototype.scope = function(v) {
     if (v === undefined) return this._scope;
     else this._scope = v; return this;
   };
 
-  Junjo.Func.prototype.label = function(v) {
+  JFunc.prototype.label = function(v) {
     if (v === undefined) return this._label;
     else {
       if (! isNaN(Number(v))) {
@@ -420,7 +420,7 @@ const Junjo = (function() {
 
 
   // execute the function and its callback, whatever happens.
-  Junjo.Func.prototype.execute = function() {
+  JFunc.prototype.execute = function() {
     // filters
     if (_(this._junjo).terminated) return; // global-terminated filter
     if (this._called) return; // execute-only-one-time filter
@@ -468,7 +468,7 @@ const Junjo = (function() {
     }
   };
 
-  Junjo.Func.prototype._callback = function() {
+  JFunc.prototype._callback = function() {
     if (!this._done || this._cb_called) return; // already-called-or-cannot-call filter
 
     if (this._timeout_id) {
@@ -507,7 +507,7 @@ const Junjo = (function() {
     }
   };
 
-  Junjo.Func.prototype.rescue = function(e, jfn) {
+  JFunc.prototype.rescue = function(e, jfn) {
     if (!this.isCatcher()) return;
     return this._func(e, jfn);
   };
