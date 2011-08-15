@@ -74,7 +74,7 @@ function junjo_test() {
     }).afterAbove(),
 
     jj('ehandler', function(e, jfn) {
-      consolelog(e.message, jfn.label);
+      consolelog(e.message, jfn.label());
 			return false;
     }).catchesAbove()
   );
