@@ -12,7 +12,7 @@ const Junjo = function(options) {
        ? Array.prototype.shift.call(arguments)
        : undefined;
 
-    var jfn = new Junjo.Func(arguments[0], fJunjo, ++fJunjo._cnt);
+    var jfn = new Junjo.Func(arguments[0], fJunjo);
     if (label !== undefined) jfn.label(label);
     fJunjo._jfncs.push(jfn);
     return jfn;
@@ -29,7 +29,6 @@ const Junjo = function(options) {
 
   /** private values **/
   fJunjo._jfncs       = [];
-  fJunjo._cnt         = 0;
   fJunjo._results     = {};
   fJunjo._out         = null;
   fJunjo._err         = null;
@@ -333,8 +332,6 @@ Junjo.args = function(i) {
  * function wrapper
  **/
 Junjo.Func = function(fn, junjo, id) {
-  Object.defineProperty(this, 'id', { value : id, writable : false });
-
   this._func        = fn;             // registered function
   this._junjo       = junjo;          // instanceof Junjo
   this._callbacks   = [];             // callback functions
