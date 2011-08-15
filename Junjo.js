@@ -169,9 +169,10 @@ Junjo.prototype.register = function(arr) {
 
   var prev_lbl, a_aboves = [], c_aboves = [];
   arr.forEach(function(jfn, k) {
+    var is_catcher = jfn.isCatcher();
     if (!jfn.label()) jfn._label = k;
     fncs[jfn.label()] = jfn;
-    if (!jfn.isCatcher()) this._funcs_count++; 
+    if (!is_catcher) this._funcs_count++; 
 
     if (jfn._after_above) {
       a_aboves.forEach(function(lbl) {
@@ -193,9 +194,11 @@ Junjo.prototype.register = function(arr) {
       jfn.catches(prev_lbl);
     }
 
-    a_aboves.push(jfn.label());
-    c_aboves.push(jfn.label());
-    prev_lbl = jfn._label;
+    if (!is_catcher) {
+      a_aboves.push(jfn.label());
+      c_aboves.push(jfn.label());
+      prev_lbl = jfn._label;
+    }
   }, this);
 
   if (arr.length != Object.keys(fncs).length) {
