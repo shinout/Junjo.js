@@ -529,9 +529,7 @@ const Junjo = (function() {
         : defaultCatcher.call(_this.scope, e, this)
 
     if (! (args instanceof Array)) 
-      args = [false];
-    else if (args)
-      args = [true, args];
+      args = (args) ? [true, args] : [false];
     else
       args.unshift(true);
 
