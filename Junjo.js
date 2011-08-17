@@ -155,7 +155,7 @@ const Junjo = (function() {
         var is_catcher = jfn.isCatcher();
         if (!jfn.label()) _jfn.label = k;
         fncs[jfn.label()] = jfn;
-        if (!is_catcher) this._funcs_count++; 
+        if (!is_catcher) _this.funcs_count++;
 
         if (_jfn.after_above) {
           a_aboves.forEach(function(lbl) {
