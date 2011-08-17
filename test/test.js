@@ -32,55 +32,49 @@ function junjo_test() {
   const J = (node) ? require('../Junjo') : Junjo;
   var jj = new J();
 
-  jj.register(
-    jj('1st', function() {
-      asyncMethod(this.label, 10, this.callback);
-      this.hoge = "HogeHoge";
-    }),
+  jj('1st', function() {
+    asyncMethod(this.label, 10, this.callback);
+    this.hoge = "HogeHoge";
+  }),
 
-    jj('2nd', function() {
-      asyncMethod(jj.scope.label, 20, jj.scope.callback);
-      console.log(jj.scope.hoge);
-      console.log(this.hoge);
-      jj.scope.abc = "ABC";
-    }).scope({hoge: 'FugaFuga'}),
+  jj('2nd', function() {
+    asyncMethod(jj.scope.label, 20, jj.scope.callback);
+    console.log(jj.scope.hoge);
+    console.log(this.hoge);
+    jj.scope.abc = "ABC";
+  }).scope({hoge: 'FugaFuga'}),
 
-    jj('3rd', function() {
-      asyncMethod(this.label, 5, this.callback);
-      console.log(this.hoge);
-      console.log(this.abc);
-    }).after('1st'),
+  jj('3rd', function() {
+    asyncMethod(this.label, 5, this.callback);
+    console.log(this.hoge);
+    console.log(this.abc);
+  }).after('1st'),
 
-    jj('4th', function() {
-      asyncMethod(this.label, 20, this.callback);
-    }).after('2nd'),
+  jj('4th', function() {
+    asyncMethod(this.label, 20, this.callback);
+  }).after('2nd'),
 
-    jj('5th', function() {
-      asyncMethod(this.label, 20, this.callback);
-    }).after('1st', '2nd'),
+  jj('5th', function() {
+    asyncMethod(this.label, 20, this.callback);
+  }).after('1st', '2nd'),
 
-    jj('6th', function() {
-      syncMethod(this.label);
-    }).after('4th').params(),
+  jj('6th', syncMethod).params(jj.label).after('4th'),
 
-    jj('7th', function() {
-      asyncMethod(this.label, 15, this.callback);
-    }).after(),
+  jj('7th', asyncMethod).params(jj.label, 15, jj.callback).after(),
 
-    jj('8th', function() {
-      asyncMethod(this.label, 35, this.callback);
-    }).after('5th'),
+  jj('8th', function() {
+    asyncMethod(this.label, 35, this.callback);
+  }).after('5th'),
 
-    jj('last', function() {
-      consolelog(Array.prototype.join.call(arguments, ' + '));
-      asyncMethod(this.label, 35, this.callback);
-    }).afterAbove(),
+  jj('last', function() {
+    consolelog(Array.prototype.join.call(arguments, ' + '));
+    asyncMethod(this.label, 35, this.callback);
+  }).afterAbove(),
 
-    jj('ehandler', function(e, jfn) {
-      consolelog(e.message, jfn.label);
-			return false;
-    }).catchesAbove()
-  );
+  jj('ehandler', function(e, jfn) {
+    consolelog(e.message, jfn.label);
+		return false;
+  }).catchesAbove()
 
   jj.on('end', function() {
     consolelog("END");

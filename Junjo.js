@@ -138,6 +138,19 @@ const Junjo = (function() {
     enumerable: true
   });
 
+  // proxy to the scope object.
+  ['callback', 'label'].forEach(function(propname) {
+    Object.defineProperty(Junjo.prototype, propname, {
+      get: function() {
+        var ret = this.scope[propname];
+        if (ret) return ret;
+        return new KeyPath(propname);
+      },
+      set: function() {},
+      enumerable: true
+    });
+  });
+
   /**
    * get result of each process. 
    * 
@@ -276,6 +289,17 @@ const Junjo = (function() {
     _(this).succeeded++;
     _(this).results[lbl] = val;
     return true;
+  };
+
+  const KeyPath = function() {
+    this.keypath = Array.prototype.map.call(arguments, function(v) { return v;});
+  }
+
+  KeyPath.prototype.get = function(obj) {
+   return this.keypath.reduce(function(o, k) {
+    if (o == null || (typeof o != 'object' && o[k] == null)) return null;
+     return o[k];
+   }, obj);
   };
 
   const Scope = function(junjo) {
@@ -453,6 +477,11 @@ const Junjo = (function() {
     _junjo.current = this;
 
     var len = _this.params.length;
+    if (len) {
+      _this.params.forEach(function(param, k) {
+        if (param instanceof KeyPath) _this.params[k] = param.get(_this.scope);
+      });
+    }
 
     // execution
     try {
