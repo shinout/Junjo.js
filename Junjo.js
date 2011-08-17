@@ -1,14 +1,14 @@
-const Junjo = (function() {
+var Junjo = (function() {
 
-  const args2arr = function(args) {
+  var args2arr = function(args) {
     return Array.prototype.map.call(args, function(v) {return v;});
   };
 
-  const is_arguments = function(v) {
+  var is_arguments = function(v) {
     return typeof v == 'object' && v.toString() == '[object Arguments]'; // FIXME there would be more elegant ways...
   };
 
-  const get_label = function(args) {
+  var get_label = function(args) {
     return (typeof args[0] != 'function') ? Array.prototype.shift.call(args) : undefined;
   };
 
@@ -25,7 +25,7 @@ const Junjo = (function() {
    *  (boolean)  nodeCallback : if true, if the first argument in the callback is not null (it means an error happened), throw the error.
    *  (number) timeout        : time to timeout [sec]
    **/
-  const Junjo = function(options) {
+  var Junjo = function(options) {
     options = options || {};
 
     // this function is returned in this constructor.
@@ -267,14 +267,14 @@ const Junjo = (function() {
 
   // private functions 
 
-  const defaultCatcher = function(e) {
+  var defaultCatcher = function(e) {
     console.error(e.stack || e.message || e);
     this.err = e;
     this.junjo.terminate();
     return false;
   };
 
-  const setResult = function(jfn, args_result, use_one) {
+  var setResult = function(jfn, args_result, use_one) {
     var _this = _(this);
     _this.finished++;
 
@@ -304,7 +304,7 @@ const Junjo = (function() {
   /** 
    * private class KeyPath
    */
-  const KeyPath = function() {
+  var KeyPath = function() {
     this.keypath = args2arr(arguments);
   }
 
@@ -318,7 +318,7 @@ const Junjo = (function() {
   /** 
    * private class Scope
    */
-  const Scope = function(junjo) {
+  var Scope = function(junjo) {
     Object.defineProperties(this, {
       junjo : {value: junjo, writable: false},
       err : { value: null, writable: true, enumerable: true},
@@ -351,7 +351,7 @@ const Junjo = (function() {
    * private class JFunc
    * function wrapper
    **/
-  const JFunc = function(fn, junjo, id) {
+  var JFunc = function(fn, junjo, id) {
     Object.defineProperty(this, 'id', { value : ++current_id, writable : false});
     // private properties
     props[this.id] = {
@@ -552,12 +552,12 @@ const Junjo = (function() {
 
   // private functions of JFunc
 
-  const isSync = function(_this) {
+  var isSync = function(_this) {
       return (_this.async === false || _this.async === null && !_this.cb_accessed);
   };
-  const isAsync = function(_this) { return !isSync(_this); };
+  var isAsync = function(_this) { return !isSync(_this); };
 
-  const jFail = function(e) {
+  var jFail = function(e) {
     var _this = _(this), _junjo = _(_this.junjo);
 
     if (jCallbackFilter(_this)) return;
@@ -576,11 +576,11 @@ const Junjo = (function() {
     return jCallbackNext.apply(this, args);
   };
 
-  const jCallbackFilter = function(_this) {
+  var jCallbackFilter = function(_this) {
     return (!_this.done || _this.cb_called); // already-called-or-cannot-call filter
   };
 
-  const jCallback = function() {
+  var jCallback = function() {
     var _this = _(this);
     if (_this.nodeCallback && isAsync(_this) && arguments[0]) { // checking node-style callback error
       return jFail.call(this, arguments[0]);
@@ -592,7 +592,7 @@ const Junjo = (function() {
   };
 
   // private in private function
-  const jCallbackNext = function() {
+  var jCallbackNext = function() {
     var _this = _(this), _junjo = _(_this.junjo);
     _this.cb_called = true;
 

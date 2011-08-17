@@ -30,7 +30,7 @@ function junjo_test() {
     }
   }
 
-  const J = (node) ? require('../Junjo') : Junjo;
+  var J = (node) ? require('../Junjo') : Junjo;
   var jj = new J({
     nodeCallback: true
 	});

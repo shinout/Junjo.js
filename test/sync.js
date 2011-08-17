@@ -29,7 +29,7 @@ function junjo_test() {
     }
   }
 
-  const J = (node) ? require('../Junjo') : Junjo;
+  var J = (node) ? require('../Junjo') : Junjo;
   var jj = new J({
     timeout: 1
   });

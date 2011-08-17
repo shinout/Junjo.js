@@ -1,16 +1,16 @@
-const mysql  = require('mysql');
-const data   = require('./data');
-const client = mysql.createClient({
+var mysql  = require('mysql');
+var data   = require('./data');
+var client = mysql.createClient({
   user     : data.user,
   password : data.password,
 });
 
-const Junjo = require('../Junjo');
+var Junjo = require('../Junjo');
 
-const DB_NAME  = data.dbname;
-const TBL_NAME = data.tblname;
+var DB_NAME  = data.dbname;
+var TBL_NAME = data.tblname;
 
-const jj = new Junjo({
+var jj = new Junjo({
   onEnd: function() {
     console.log("end");
     client.end();
