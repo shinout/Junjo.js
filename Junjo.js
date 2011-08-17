@@ -134,6 +134,24 @@ const Junjo = (function() {
   };
 
   /**
+   * add catcher
+   */
+  Junjo.prototype.catches = function() {
+    var label = (typeof arguments[0] != 'function')
+       ? Array.prototype.shift.call(arguments)
+       : undefined;
+    if (label) return this(arguments[0]).catches(label);
+    else return this(arguments[0]).catches();
+  };
+
+  /**
+   * add catcher to all the function registered previously
+   */
+  Junjo.prototype.catchesAbove = function(fn) {
+    return this(fn).catchesAbove();
+  };
+
+  /**
    * get result of each process. 
    * 
    * @param lbl : label of processes, if it is not given, an object which contains all results is returned.
