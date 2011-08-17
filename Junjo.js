@@ -117,8 +117,7 @@ const Junjo = (function() {
   ['callback', 'label', 'err', 'out'].forEach(function(propname) {
     Object.defineProperty(Junjo.prototype, propname, {
       get: function() {
-        var ret = this.scope[propname];
-        if (ret) return ret;
+        if (_(this).current) return this.scope[propname];
         return new KeyPath(propname);
       },
       set: function() {},
