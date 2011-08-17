@@ -75,6 +75,34 @@ const Junjo = (function() {
     return fJunjo;
   };
 
+  /** public properties **/
+
+  Object.defineProperty(Junjo.prototype, 'scope', {
+    get: function() {
+      return _(this).scope;
+    },
+    set: function() {},
+    enumerable: true
+  });
+
+  // proxy to the scope object.
+  ['callback', 'label', 'err', 'out'].forEach(function(propname) {
+    Object.defineProperty(Junjo.prototype, propname, {
+      get: function() {
+        if (_(this).current) return this.scope[propname];
+        return new KeyPath(propname);
+      },
+      set: function() {},
+      enumerable: true
+    });
+  });
+
+  // Junjo extends Function prototype
+  Object.getOwnPropertyNames(Function.prototype).forEach(function(k) {
+    Junjo.prototype[k] = Function.prototype[k];
+  });
+
+
   /** public functions **/
 
   /**
@@ -105,26 +133,6 @@ const Junjo = (function() {
     _(this).listeners[evtname].push(fn);
   };
 
-  Object.defineProperty(Junjo.prototype, 'scope', {
-    get: function() {
-      return _(this).scope;
-    },
-    set: function() {},
-    enumerable: true
-  });
-
-  // proxy to the scope object.
-  ['callback', 'label', 'err', 'out'].forEach(function(propname) {
-    Object.defineProperty(Junjo.prototype, propname, {
-      get: function() {
-        if (_(this).current) return this.scope[propname];
-        return new KeyPath(propname);
-      },
-      set: function() {},
-      enumerable: true
-    });
-  });
-
   /**
    * get result of each process. 
    * 
@@ -135,9 +143,9 @@ const Junjo = (function() {
     return _(this).results[lbl];
   };
 
-  // deprecated!
-  Junjo.prototype.register = function() {console.error('Junjo.prototype.register is deprecated.')};
-
+  /**
+   * run all the registered functions
+   */
   Junjo.prototype.run = function() {
     var _this = _(this);
     var self  = this;
@@ -214,6 +222,9 @@ const Junjo = (function() {
     return this;
   };
 
+  // deprecated.
+  Junjo.prototype.register = function() {console.error('Junjo.prototype.register is deprecated.')};
+
   // private functions 
 
   const defaultCatcher = function(e) {
@@ -250,7 +261,9 @@ const Junjo = (function() {
   };
 
 
-  // private class KeyPath
+  /** 
+   * private class KeyPath
+   */
   const KeyPath = function() {
     this.keypath = args2arr(arguments);
   }
@@ -262,7 +275,9 @@ const Junjo = (function() {
    }, obj);
   };
 
-  // private class Scope
+  /** 
+   * private class Scope
+   */
   const Scope = function(junjo) {
     Object.defineProperties(this, {
       junjo : {value: junjo, writable: false},
@@ -482,8 +497,13 @@ const Junjo = (function() {
     }
   };
 
-  // private function of JFunc
-  //
+  JFunc.prototype.rescue = function(e, jfn) {
+    if (!this.isCatcher()) return;
+    return _(this).func.call(_(this).scope, e, jfn);
+  };
+
+  // private functions of JFunc
+
   const jFail = function(e) {
     var _this = _(this), _junjo = _(_this.junjo);
 
@@ -542,15 +562,6 @@ const Junjo = (function() {
       });
     }
   };
-
-  JFunc.prototype.rescue = function(e, jfn) {
-    if (!this.isCatcher()) return;
-    return _(this).func.call(_(this).scope, e, jfn);
-  };
-
-  Object.getOwnPropertyNames(Function.prototype).forEach(function(k) {
-    Junjo.prototype[k] = Function.prototype[k];
-  });
 
   return Junjo;
 })();
