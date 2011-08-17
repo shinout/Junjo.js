@@ -35,7 +35,7 @@ function junjo_test() {
     catcher : function(e) {
       console.error(e);
       consolelog("Error!!!!!!!!but continue executing!!!!!");
-      return true;
+      return ['firstArg', 'secondArg'];
     }
   });
 
