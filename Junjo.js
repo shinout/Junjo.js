@@ -48,6 +48,7 @@ const Junjo = (function() {
       out          : null,
       err          : null,
       terminated   : false,
+      ended        : false,
       funcs_count  : 0, // the number of registered functions without catchers.
       finished     : 0,
       succeeded    : 0,
@@ -236,8 +237,9 @@ const Junjo = (function() {
     var _this = _(this);
     _this.finished++;
 
-    if (_this.finished == _this.funcs_count) {
+    if (_this.finished == _this.funcs_count && !_this.ended) {
       var err = _this.err || (_this.succeeded != _this.funcs_count) ? true : null;
+      _this.ended = true;
       this.emit('end', err, _this.out);
     }
   };
@@ -251,6 +253,10 @@ const Junjo = (function() {
     if (!bool) return;
 
     this.emit('terminate', _this.err, _this.out);
+    if (!_this.ended) {
+      _this.ended = true;
+      this.emit('end', _this.err, _this.out);
+    }
   };
 
   const setResult = function(lbl, val) {

@@ -76,16 +76,12 @@ function junjo_test() {
 		return false;
   }).catchesAbove()
 
-  jj.on('end', function() {
-    consolelog("END");
+  jj.on('end', function(e, r) {
+    consolelog("END", e, r);
   });
 
-  jj.on('success', function() {
-    consolelog("success");
-  });
-
-  jj.on('error', function() {
-    consolelog("error end");
+  jj.on('terminate', function(e, r) {
+    consolelog("terminated!", e, r);
   });
 
   jj.run();
