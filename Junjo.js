@@ -1,4 +1,5 @@
 var Junjo = (function() {
+  /* utility functions */
 
   var args2arr = function(args) {
     return Array.prototype.map.call(args, function(v) {return v;});
@@ -8,14 +9,11 @@ var Junjo = (function() {
     return typeof v == 'object' && v.toString() == '[object Arguments]'; // FIXME there would be more elegant ways...
   };
 
-  var get_label = function(args) {
-    return (typeof args[0] != 'function') ? Array.prototype.shift.call(args) : undefined;
-  };
-
   // preparation for private properties
   var props = {};
   var current_id = 0;
   function _(obj) { return props[obj.id]; }
+  function _d(obj) { delete props[obj.id]; }
 
   /**
    * constructor 
@@ -31,10 +29,13 @@ var Junjo = (function() {
     // this function is returned in this constructor.
     // It behaviors as a object .
     var fJunjo = function() {
-      var label = get_label(arguments);
-      var jfn = new JFunc(arguments[0], fJunjo);
-      if (label !== undefined) jfn.label(label);
-      _(fJunjo).jfncs.push(jfn);
+      var label   = (typeof arguments[0] != 'function') ? Array.prototype.shift.call(arguments) : undefined;
+      var jfn     = new JFunc(arguments[0], fJunjo);
+      var _fJunjo = _(fJunjo);
+      var num     = _fJunjo.jfncs.push(jfn) -1;
+      if (label == undefined) label = num;
+      _(jfn).label = label;
+      _fJunjo.labels[label] = num;
       return jfn;
     };
 
@@ -48,19 +49,19 @@ var Junjo = (function() {
 
     // private properties
     props[fJunjo.id] = {
-      jfncs        : [],
-      timeout      : 5,
-      catcher      : null,
-      nodeCallback : false,
-      results      : {},
-      terminated   : false,
-      ended        : false,
-      funcs_count  : 0, // the number of registered functions without catchers.
-      finished     : 0,
-      listeners    : {},
-      runnable     : true,
-      scope        : new Scope(fJunjo),
-      current      : null
+      jfncs        : [],                // registered functions
+      labels       : {},                // {label => position of jfncs}
+      timeout      : 5,                 // timeout [sec]
+      catcher      : null,              // default catcher
+      nodeCallback : false,             // use node-style callback or not
+      results      : {},                // results of each functions
+      terminated   : false,             // terminated or not
+      ended        : false,             // emited end event or not
+      finished     : 0,                 // the number of finished functions
+      listeners    : {},                // eventlisteners
+      runnable     : true,              // allowable to run or not
+      scope        : new Scope(fJunjo), // default "this" of each function
+      current      : null               // pointer to current function
     };
 
     [ ['timeout'     , 'number'],
@@ -137,26 +138,35 @@ var Junjo = (function() {
    * add catcher
    */
   Junjo.prototype.catches = function() {
-    var label = get_label(arguments);
-    if (label) return this(arguments[0]).catches(label);
-    else return this(arguments[0]).catches();
+    var fn = Array.prototype.pop.call(arguments);
+    var _this = _(this);
+    if (!arguments.length) {
+      if (_this.jfncs.length) _(_this.jfncs[_this.jfncs.length-1]).catcher = fn;
+    }
+    else {
+      Array.prototype.forEach.call(arguments, function(lbl) {
+        if (_this.jfncs[_this.labels[lbl]] ) _(_this.jfncs[_this.labels[lbl]]).catcher = fn;
+      });
+    }
+    return this;
   };
 
   /**
-   * add catcher to all the function registered previously
+   * add catcher to all the functions registered previously, except those already have a catcher.
    */
   Junjo.prototype.catchesAbove = function(fn) {
-    return this(fn).catchesAbove();
+    _(this).jfncs.forEach(function(jfnc) {
+      if (!_(jfnc).catcher) _(jfnc).catcher = fn;
+    });
+    return this;
   };
 
   Junjo.prototype.sync = function() {
-    var label = get_label(arguments);
-    return this(arguments[0]).label(label).sync();
+    return this.apply(null, arguments).sync();
   };
 
   Junjo.prototype.async = function() {
-    var label = get_label(arguments);
-    return this(arguments[0]).label(label).async();
+    return this.apply(null, arguments).async();
   };
 
   /**
@@ -184,80 +194,14 @@ var Junjo = (function() {
    */
   Junjo.prototype.run = function() {
     var _this = _(this);
-    var self  = this;
     if (!_this.runnable) return this;
     _this.runnable = true;
 
-    //setTimeout(function() {
-      var fncs = {};
-
-      var prev_lbl, a_aboves = [], c_aboves = [];
-
-      _this.jfncs.forEach(function(jfn, k) {
-        var _jfn = _(jfn);
-        var is_catcher = jfn.isCatcher();
-        if (!jfn.label()) _jfn.label = k;
-        fncs[jfn.label()] = jfn;
-        if (!is_catcher) _this.funcs_count++;
-
-        if (_jfn.after_above) {
-          a_aboves.forEach(function(lbl) {
-            jfn.after(lbl);
-          });
-          a_aboves = [];
-        }
-        else if (_jfn.after_prev && prev_lbl != undefined) {
-          jfn.after(prev_lbl);
-        }
-
-        if (_jfn.catch_above) {
-          c_aboves.forEach(function(lbl) {
-            jfn.catches(lbl);
-          });
-          c_aboves = [];
-        }
-        else if (_jfn.catch_prev && prev_lbl != undefined) {
-          jfn.catches(prev_lbl);
-        }
-
-        if (!is_catcher) {
-          a_aboves.push(jfn.label());
-          c_aboves.push(jfn.label());
-          prev_lbl = _jfn.label;
-        }
-      }, self);
-
-      if (_this.jfncs.length != Object.keys(fncs).length) {
-        throw new Error('there are duplicated label settings.');
-      }
-
-      // register dependencies
-      _this.jfncs.forEach(function(jfn, k) {
-        var _jfn = _(jfn);
-        _jfn.afters.forEach(function(lbl) {
-          var before = fncs[lbl];
-          if (!before) throw new Error('label "' + lbl  + '" is not defined.');
-          if (before.isCatcher()) return; // TODO throw an error
-          _jfn.counter++;
-          _(before).callbacks.push(jfn);
-        });
-
-        _jfn.catches.forEach(function(lbl) {
-          var from = fncs[lbl];
-          if (!from) throw new Error('label "' + lbl  + '" is not defined.');
-          if (from.isCatcher()) return; // TODO throw an error
-          if (!_(from).catcher) _(from).catcher = jfn;
-        });
-      }, self);
-
-      var args = arguments;
-      _this.jfncs.forEach(function(jfn) {
-        if (!_(jfn).afters.length && !jfn.isCatcher()) {
-          _(jfn).params = args2arr(args);
-          jfn.execute();
-        }
-      }, self);
-    //}, 0);
+    var fncs = {};
+    var args = arguments;
+    _this.jfncs.forEach(function(jfn) {
+      jfn.execute.apply(jfn, args);
+    });
 
     return this;
   };
@@ -280,7 +224,7 @@ var Junjo = (function() {
 
     _(this).results[jfn.label()] = (use_one) ? args_result[0] : args_result;
 
-    if (_this.finished == _this.funcs_count && !_this.ended) {
+    if (_this.finished == _this.jfncs.length && !_this.ended) {
       _this.ended = true;
       this.emit('end', _this.scope.err, _this.scope.out);
     }
@@ -351,7 +295,7 @@ var Junjo = (function() {
    * private class JFunc
    * function wrapper
    **/
-  var JFunc = function(fn, junjo, id) {
+  var JFunc = function(fn, junjo) {
     Object.defineProperty(this, 'id', { value : ++current_id, writable : false});
     // private properties
     props[this.id] = {
@@ -359,14 +303,9 @@ var Junjo = (function() {
       junjo        : junjo,                // instanceof Junjo
       callbacks    : [],                   // callback functions
       afters       : [],                   // labels of functions executed before this function
-      after_prev   : false,                // if true, executed after the previously registered function
-      after_above  : false,                // if true, executed after all the registered function above.
       params       : [],                   // parameters to be given to the function. if empty, original callback arguments is used.
       scope        : _(junjo).scope,       // "this" scope to execute.
       catcher      : null,                 // execute when the function throws an error.
-      catches      : [],                   // Array of labels. If the function with the label throws an error, this function will rescue().
-      catch_prev   : false,                // catches previous function or not.
-      catch_above  : false,                // catches all functions registered before.
       timeout_id   : null,                 // id of timeout checking function
       counter      : 0,                    // until 0, decremented per each call, then execution starts.
       called       : false,                // execution started or not
@@ -406,24 +345,26 @@ var Junjo = (function() {
   };
 
   JFunc.prototype.after = function() {
-    if (arguments.length == 0) {
-      _(this).after_prev = true;
-      return this;
-    }
-    else {
-      _(this).after_prev = false;
-    }
 
-    Array.prototype.forEach.call(arguments, function(v) {
-      if (_(this).afters.indexOf(v) >= 0) return;
-      _(this).afters.push(v);
+    var _this = _(this), _junjo = _(_this.junjo), lbl = _this.label;
+    if (arguments.length == 0 && _junjo.labels[lbl] > 0)
+      Array.prototype.push.call(arguments, _junjo.jfncs[_junjo.labels[lbl]-1].label());
+
+    Array.prototype.forEach.call(arguments, function(lbl) {
+      var before = _junjo.jfncs[_junjo.labels[lbl]];
+      if (!before || before === this || _this.afters.indexOf(lbl) >= 0) return;
+      _this.afters.push(lbl);
+      _this.counter++;
+      _(before).callbacks.push(this);
     }, this);
+
     return this;
   };
 
   JFunc.prototype.afterAbove = function(bool) {
-    _(this).after_above = (bool !== false);
-    return this;
+    return this.after.apply(this, _(_(this).junjo).jfncs.map(function(jfn) {
+      return jfn.label();
+    }));
   };
 
   JFunc.prototype.nodeCallback = function(bool) {
@@ -436,29 +377,25 @@ var Junjo = (function() {
     return this;
   };
 
+  JFunc.prototype.remove = function() {
+    var _this = _(this), _junjo = _(_this.junjo); 
+    _junjo.jfncs.splice(_junjo.labels[_this.label], 1);
+    delete _junjo.labels[_this.label];
+    _d(this);
+  };
+
   JFunc.prototype.catches = function() {
-    if (arguments.length == 0) {
-      _(this).catch_prev = true;
-      return this;
-    }
-    else {
-      _(this).catch_prev = false;
-    }
-    Array.prototype.forEach.call(arguments, function(v) {
-      // if (_(this).catches.indexOf(v) >= 0) return; // not necessary to be unique.
-      _(this).catches.push(v);
-    }, this);
-    return this;
+    var junjo = _(this).junjo;
+    Array.prototype.push.call(arguments, _(this).func);
+    this.remove(); // delete this object
+    return junjo.catches.apply(junjo, arguments);
   };
 
-  JFunc.prototype.catchesAbove = function(bool) {
-    _(this).catch_above = (bool !== false);
-    return this;
-  };
-
-  JFunc.prototype.isCatcher = function() {
-    var _this = _(this);
-    return _this.catch_above || _this.catch_prev || _this.catches.length;
+  JFunc.prototype.catchesAbove = function() {
+    var junjo = _(this).junjo;
+    var func  = _(this).func;
+    this.remove(); // delete this object
+    return junjo.catchesAbove.call(junjo, func);
   };
 
   JFunc.prototype.scope = function(v) {
@@ -470,11 +407,14 @@ var Junjo = (function() {
     if (arguments.length == 0) return _(this).label;
     else {
       if (v === undefined) return this;
+      if (typeof v != 'string') throw new Error('cannot set a non-string label.');
 
-      if (! isNaN(Number(v))) {
-        throw new Error('cannot set number labels, because Junjo.js sets number labels to functions with no custom labels.');
-      }
-      _(this).label = v; return this;
+      var _this = _(this), _junjo = _(_this.junjo); 
+      var num = _junjo.labels[_this.label];
+      delete _junjo.labels[_this.label];
+      _(this).label = v;
+      _junjo.labels[v] = num;
+      return this;
     }
   };
 
@@ -488,9 +428,8 @@ var Junjo = (function() {
     // filters
     if (_junjo.terminated) return; // global-terminated filter
     if (_this.called) return; // execute-only-one-time filter
-    if (this.isCatcher()) return; // catcher filter
 
-    if (--_this.counter > 0) return; // dependency filter
+    if (_this.counter-- > 0) return; // dependency filter
 
 
     // preparation
@@ -499,10 +438,10 @@ var Junjo = (function() {
 
     if (_this.params.length) {
       _this.params.forEach(function(param, k) {
-        if (param instanceof KeyPath) _this.params[k] = param.get(_this.scope);
+        if (param instanceof KeyPath) _this.params[k] = param.get(_junjo.scope);
       });
     }
-    else {
+    else if (_this.afters.length) {
       _this.params = _this.afters.reduce(function(arr, lbl) {
         var val = _junjo.results[lbl];
         if (is_arguments(val)) {
@@ -515,6 +454,9 @@ var Junjo = (function() {
         }
         return arr;
       }, []);
+    }
+    else {
+      _this.params = arguments;
     }
 
     // execution
@@ -545,11 +487,6 @@ var Junjo = (function() {
     }
   };
 
-  JFunc.prototype.rescue = function(e, jfn) {
-    if (!this.isCatcher()) return;
-    return _(this).func.call(_(this).scope, e, jfn);
-  };
-
   // private functions of JFunc
 
   var isSync = function(_this) {
@@ -563,10 +500,10 @@ var Junjo = (function() {
     if (jCallbackFilter(_this)) return;
 
     var args = (_this.catcher)
-      ? _this.catcher.rescue(e, this)
+      ? _this.catcher.call(_junjo.scope, e, this)
       : (_junjo.catcher)
-        ? _junjo.catcher.call(_this.scope, e, this)
-        : defaultCatcher.call(_this.scope, e, this)
+        ? _junjo.catcher.call(_junjo.scope, e, this)
+        : defaultCatcher.call(_junjo.scope, e, this)
 
     if (! (args instanceof Array)) 
       args = (args) ? [true, args] : [false];
