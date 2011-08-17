@@ -35,49 +35,55 @@ function junjo_test() {
     nodeCallback: true
 	});
 
-  jj.register(
-    jj('1st', function() {
-      asyncMethod(this.label, 10, this.callback);
-    }),
+  jj('1st', function() {
+    asyncMethod(this.label, 10, this.callback);
+  });
 
-    jj('2nd', function() {
-      asyncMethod(this.label, 20, this.callback);
-    }),
+  jj('2nd', function() {
+    asyncMethod(this.label, 20, this.callback);
+  });
 
-    jj('3rd', function() {
-      asyncMethod(this.label, 5, this.callback);
-    }).after('1st'),
+  jj('3rd', function() {
+    asyncMethod(this.label, 5, this.callback);
+  }).after('1st');
 
-    jj('4th', function() {
-      asyncMethod(this.label, 20, this.callback);
-    }).after('2nd'),
+  jj('4th', function() {
+    asyncMethod(this.label, 20, this.callback);
+  }).after('2nd');
 
-    jj('5th', function() {
-      asyncMethod(this.label, 20, this.callback);
-    }).after('1st', '2nd'),
+  jj('5th', function() {
+    asyncMethod(this.label, 20, this.callback);
+  }).after('1st', '2nd');
 
-    jj('6th', function() {
-      syncMethod(this.label);
-    }).after('4th').params(),
+  jj('6th', function() {
+    syncMethod(this.label);
+  }).after('4th').params();
 
-    jj('7th', function() {
-      asyncMethod(this.label, 15, this.callback);
-    }).after(),
+  jj('7th', function() {
+    asyncMethod(this.label, 15, this.callback);
+  }).after();
 
-    jj('8th', function() {
-      asyncMethod(this.label, 35, this.callback);
-    }).after('5th'),
+  jj('8th', function() {
+    asyncMethod(this.label, 35, this.callback);
+  }).after('5th');
 
-    jj('last', function() {
-      consolelog(this.args().join(' + '));
-      asyncMethod(this.label, 35, this.callback);
-    }).afterAbove(),
+  jj('last', function() {
+    var args = Array.prototype.map.call(arguments, function(v) {
+      switch (v) {
+        case undefined: return 'undefined';
+        case null: return 'null';
+        default: return v;
+      }
+    });
 
-    jj('ehandler', function(e, jfn) {
-      consolelog(e.message, jfn.label());
-			return false;
-    }).catchesAbove()
-  );
+    consolelog(args.join(' + '));
+    asyncMethod(this.label, 35, this.callback);
+  }).afterAbove();
+
+  jj('ehandler', function(e, jfn) {
+    consolelog(e.message, jfn.label());
+		return false;
+  }).catchesAbove();
 
   jj.on('end', function() {
     consolelog("END");

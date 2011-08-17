@@ -74,7 +74,15 @@ function junjo_test() {
     }).after('5th'),
 
     jj('last', function() {
-      consolelog(this.args().join(' + '));
+      var args = Array.prototype.map.call(arguments, function(v) {
+        switch (v) {
+          case undefined: return 'undefined';
+          case null: return 'null';
+          default: return v;
+        }
+      });
+
+      consolelog(args.join(' + '));
       asyncMethod(this.label, 35, this.callback);
     }).afterAbove()
   );

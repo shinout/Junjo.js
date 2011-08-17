@@ -398,11 +398,6 @@ const Junjo = (function() {
     return this;
   };
 
-  JFunc.prototype.args = function(k) {
-    if (k != null && !isNaN(Number(k))) return _(this).args[k];
-    return _(this).args;
-  };
-
   JFunc.prototype.params = function() {
     Array.prototype.forEach.call(arguments, function(v) {
       _(this).params.push(v);
@@ -587,8 +582,8 @@ const Junjo = (function() {
 
   const jCallback = function() {
     var _this = _(this);
-    if (_this.nodeCallback && isAsync(_this) && args[0]) { // checking node-style callback error
-      return jFail.call(this, args[0]);
+    if (_this.nodeCallback && isAsync(_this) && arguments[0]) { // checking node-style callback error
+      return jFail.call(this, arguments[0]);
     }
     if (jCallbackFilter(_this)) return;
 
