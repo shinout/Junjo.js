@@ -143,6 +143,16 @@ const Junjo = (function() {
     return _(this).results[lbl];
   };
 
+  Junjo.prototype.after = function(jn) {
+    var self = this;
+    jn.on('end', function(err, out) {
+      _(self).runnable = true;
+      self.run(err, out);
+    });
+    _(self).runnable = false;
+    return this;
+  };
+
   /**
    * run all the registered functions
    */
@@ -213,9 +223,12 @@ const Junjo = (function() {
         });
       }, self);
 
+      var args = arguments;
       _this.jfncs.forEach(function(jfn) {
-        if (!_(jfn).afters.length && !jfn.isCatcher()) 
+        if (!_(jfn).afters.length && !jfn.isCatcher()) {
+          _(jfn).params = args2arr(args);
           jfn.execute();
+        }
       }, self);
     //}, 0);
 

@@ -34,7 +34,7 @@ function junjo_test() {
     timeout: 2
   });
 
-  jj.register(
+  jj.run(
     jj('1st', function() {
       throw new Error(this.label + " Error.");
       asyncMethod(this.label, 10, this.callback);
@@ -88,7 +88,6 @@ function junjo_test() {
   jj.on('terminate', function(e, r) {
     consolelog("terminated!!!!", e, r);
   });
-  jj.run();
 }
 
 if (node) { junjo_test();}
