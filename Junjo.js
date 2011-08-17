@@ -138,7 +138,8 @@ const Junjo = (function() {
     return _(this).results[lbl];
   };
 
-  Junjo.prototype.register = function() {};
+  // deprecated!
+  Junjo.prototype.register = function() {console.error('Junjo.prototype.register is deprecated.')};
 
   Junjo.prototype.run = function() {
     var _this = _(this);
