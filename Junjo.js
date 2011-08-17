@@ -51,9 +51,7 @@ const Junjo = (function() {
       funcs_count  : 0, // the number of registered functions without catchers.
       finished     : 0,
       succeeded    : 0,
-      ends         : [],
-      successEnds  : [],
-      errorEnds    : [],
+      listeners    : {},
       runnable     : true,
       scope        : new Scope(fJunjo),
       current      : null
@@ -74,38 +72,32 @@ const Junjo = (function() {
   /** public functions **/
 
   /**
-   * finish a series of processes, and onErrorEnd hooks will be executed.
-   *
-   * call it in catcher functions
+   * terminate whole process
    */
   Junjo.prototype.terminate = function() {
     _(this).terminated = true;
   };
 
   /**
+   * emitting event asynchronously.
+   * the similar way as EventEmitter in Node.js
+   */
+  Junjo.prototype.emit = function() {
+    var evtname = Array.prototype.shift.call(arguments);
+    var listeners = _(this).listeners[evtname] || [];
+    var self = this, args = arguments;
+    listeners.forEach(function(listener) {
+      setTimeout(function() { listener.apply(self, args);}, 0);
+    });
+  };
+
+  /**
    * set eventListener
    */
   Junjo.prototype.on = function(evtname, fn) {
-    switch (evtname.toLowerCase()) {
-    case 'end': 
-      this.onEnd(fn);
-      break;
-
-    case 'error': 
-    case 'errorend': 
-      this.onErrorEnd(fn);
-      break;
-
-    case 'success': 
-    case 'successend': 
-      this.onSuccessEnd(fn);
-      break;
-    }
+    if (! (_(this).listeners[evtname] instanceof Array)) _(this).listeners[evtname] = [];
+    _(this).listeners[evtname].push(fn);
   };
-
-  Junjo.prototype.onEnd = function(fn) { _(this).ends.push(fn); };
-  Junjo.prototype.onErrorEnd = function(fn) { _(this).errorEnds.push(fn); };
-  Junjo.prototype.onSuccessEnd = function(fn) { _(this).successEnds.push(fn); };
 
   Object.defineProperty(Junjo.prototype, 'scope', {
     get: function() {
@@ -231,36 +223,34 @@ const Junjo = (function() {
 
   // private functions 
 
+  /**
+   * default catcher.
+   */
+  const defaultCatcher = function(e) {
+    console.error(e.stack || e.message || e);
+    this.terminate();
+    return false;
+  };
+
   const setFinished = function(jfn) {
     var _this = _(this);
     _this.finished++;
 
     if (_this.finished == _this.funcs_count) {
       var err = _this.err || (_this.succeeded != _this.funcs_count) ? true : null;
-      _this.ends.forEach(function(fn) {
-        fn.call(this, err, _this.out);
-      }, this);
-    }
-
-    if (_this.succeeded == _this.funcs_count) {
-      _this.successEnds.forEach(function(fn) {
-        fn.call(this, _this.out);
-      }, this);
+      this.emit('end', err, _this.out);
     }
   };
 
   const onTerminate = function() {
     var _this = _(this);
-    var self  = this;
     var bool  = _this.jfncs.every(function(jfn) {
       var _jfn = _(jfn);
       return _jfn.cb_called || _jfn.cb_accessed == _jfn.cb_called
     });
     if (!bool) return;
 
-    _this.errorEnds.forEach(function(fn) {
-      fn.call(self, _this.err || true, _this.out);
-    }, self);
+    this.emit('terminate', _this.err, _this.out);
   };
 
   const setResult = function(lbl, val) {
@@ -269,6 +259,8 @@ const Junjo = (function() {
     return true;
   };
 
+
+  // private class KeyPath
   const KeyPath = function() {
     this.keypath = Array.prototype.map.call(arguments, function(v) { return v;});
   }
@@ -280,6 +272,7 @@ const Junjo = (function() {
    }, obj);
   };
 
+  // private class Scope
   const Scope = function(junjo) {
     Object.defineProperty(this, 'junjo', {value: junjo, writable: false});
 
@@ -308,7 +301,7 @@ const Junjo = (function() {
   };
 
   /***
-   * JFunc
+   * private class JFunc
    * function wrapper
    **/
   const JFunc = function(fn, junjo, id) {
@@ -491,17 +484,8 @@ const Junjo = (function() {
     }
   };
 
-  /**
-   * default catcher.
-   */
-  const defaultCatcher = function(e) {
-    console.error(e.stack || e.message || e);
-    this.terminate();
-    return false;
-  };
 
-
-
+  // private function of JFunc
   const jCallback = function() {
     var _this  = _(this);
     var junjo  = _this.junjo;
