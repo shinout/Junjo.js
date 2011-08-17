@@ -303,7 +303,6 @@ const Junjo = (function() {
       func         : fn,                   // registered function
       junjo        : junjo,                // instanceof Junjo
       callbacks    : [],                   // callback functions
-      args         : [],                   // arguments passed from each dependent functions
       afters       : [],                   // labels of functions executed before this function
       after_prev   : false,                // if true, executed after the previously registered function
       after_above  : false,                // if true, executed after all the registered function above.
