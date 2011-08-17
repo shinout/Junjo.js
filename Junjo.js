@@ -8,6 +8,10 @@ const Junjo = (function() {
     return typeof v == 'object' && v.toString() == '[object Arguments]'; // FIXME there would be more elegant ways...
   };
 
+  const get_label = function(args) {
+    return (typeof args[0] != 'function') ? Array.prototype.shift.call(args) : undefined;
+  };
+
   // preparation for private properties
   var props = {};
   var current_id = 0;
@@ -27,10 +31,7 @@ const Junjo = (function() {
     // this function is returned in this constructor.
     // It behaviors as a object .
     var fJunjo = function() {
-      var label = (typeof arguments[0] != 'function')
-         ? Array.prototype.shift.call(arguments)
-         : undefined;
-
+      var label = get_label(arguments);
       var jfn = new JFunc(arguments[0], fJunjo);
       if (label !== undefined) jfn.label(label);
       _(fJunjo).jfncs.push(jfn);
@@ -43,7 +44,6 @@ const Junjo = (function() {
     else 
       Object.keys(Junjo.prototype).forEach(function(k) { _[k] = Junjo.prototype[k]; });
 
-    // properties of fJunjo
     Object.defineProperty(fJunjo, 'id', { value : ++current_id, writable : false});
 
     // private properties
@@ -137,9 +137,7 @@ const Junjo = (function() {
    * add catcher
    */
   Junjo.prototype.catches = function() {
-    var label = (typeof arguments[0] != 'function')
-       ? Array.prototype.shift.call(arguments)
-       : undefined;
+    var label = get_label(arguments);
     if (label) return this(arguments[0]).catches(label);
     else return this(arguments[0]).catches();
   };
@@ -149,6 +147,16 @@ const Junjo = (function() {
    */
   Junjo.prototype.catchesAbove = function(fn) {
     return this(fn).catchesAbove();
+  };
+
+  Junjo.prototype.sync = function() {
+    var label = get_label(arguments);
+    return this(arguments[0]).label(label).sync();
+  };
+
+  Junjo.prototype.async = function() {
+    var label = get_label(arguments);
+    return this(arguments[0]).label(label).async();
   };
 
   /**
@@ -178,6 +186,7 @@ const Junjo = (function() {
     var _this = _(this);
     var self  = this;
     if (!_this.runnable) return this;
+    _this.runnable = true;
 
     //setTimeout(function() {
       var fncs = {};
@@ -279,7 +288,7 @@ const Junjo = (function() {
     if (_this.terminated) {
       var bool  = _this.jfncs.every(function(f) {
         var _jfn = _(f);
-        return _jfn.cb_called || _jfn.cb_accessed == _jfn.cb_called
+        return _jfn.cb_called || !_jfn.called; // FIXME
       });
       if (!bool) return;
 
@@ -362,8 +371,9 @@ const Junjo = (function() {
       counter      : 0,                    // until 0, decremented per each call, then execution starts.
       called       : false,                // execution started or not
       done         : false,                // execution ended or not
+      async        : null,                 // asynchronous or not.
       cb_accessed  : false,                // whether callback is accessed via "this.callback", this means asynchronous.
-      cb_called    : false,                // whether callback is called or not
+      cb_called    : false,                // whether callback is called or not.
       nodeCallback : _(junjo).nodeCallback // node-style callback or not
     };
   };
@@ -376,6 +386,16 @@ const Junjo = (function() {
   JFunc.prototype.bind = function() {
     this.scope(Array.prototype.shift.call(arguments));
     return this.params.apply(this, arguments);
+  };
+
+  JFunc.prototype.sync = function(bool) {
+    _(this).async = (bool === undefined) ? false : !bool;
+    return this;
+  };
+
+  JFunc.prototype.async = function(bool) {
+    _(this).async = (bool === undefined) ? true : !!bool;
+    return this;
   };
 
   JFunc.prototype.args = function(k) {
@@ -452,8 +472,10 @@ const Junjo = (function() {
   };
 
   JFunc.prototype.label = function(v) {
-    if (v === undefined) return _(this).label;
+    if (arguments.length == 0) return _(this).label;
     else {
+      if (v === undefined) return this;
+
       if (! isNaN(Number(v))) {
         throw new Error('cannot set number labels, because Junjo.js sets number labels to functions with no custom labels.');
       }
@@ -504,7 +526,7 @@ const Junjo = (function() {
     try {
       var ret = _this.func.apply(_this.scope, _this.params);
       _this.done = true;
-      if (!_this.cb_accessed) { // if true, regarded as synchronous function.
+      if (isSync(_this)) { // synchronous
         jCallback.call(this, ret);
       }
       else { // checking if the callback is called in the function with in timeout[sec]
@@ -535,6 +557,11 @@ const Junjo = (function() {
 
   // private functions of JFunc
 
+  const isSync = function(_this) {
+      return (_this.async === false || _this.async === null && !_this.cb_accessed);
+  };
+  const isAsync = function(_this) { return !isSync(_this); };
+
   const jFail = function(e) {
     var _this = _(this), _junjo = _(_this.junjo);
 
@@ -560,7 +587,7 @@ const Junjo = (function() {
 
   const jCallback = function() {
     var _this = _(this);
-    if (_this.nodeCallback && _this.cb_accessed && args[0]) { // checking node-style callback error
+    if (_this.nodeCallback && isAsync(_this) && args[0]) { // checking node-style callback error
       return jFail.call(this, args[0]);
     }
     if (jCallbackFilter(_this)) return;
@@ -581,8 +608,7 @@ const Junjo = (function() {
 
     var succeeded = Array.prototype.shift.call(arguments);
 
-    var is_sync = !_this.cb_accessed;
-    setResult.call(_this.junjo, this, arguments, is_sync);
+    setResult.call(_this.junjo, this, arguments, isSync(_this));
 
     if (succeeded) {
       _this.callbacks.forEach(function(cb_jfn) {

@@ -45,7 +45,7 @@ function junjo_test() {
     jj.scope.abc = "ABC";
   }).scope({hoge: 'FugaFuga'});
 
-  jj('3rd', function() {
+  jj.async('3rd', function() {
     asyncMethod(this.label, 5, this.callback);
     console.log(this.hoge);
     console.log(this.abc);
@@ -55,7 +55,7 @@ function junjo_test() {
 
   jj('4th', function() {
     asyncMethod(this.label, 20, this.callback);
-  }).after('2nd');
+  }).after('2nd').async();
 
   jj('5th', function() {
     asyncMethod(this.label, 20, this.callback);
@@ -68,6 +68,8 @@ function junjo_test() {
   jj('8th', function() {
     asyncMethod(this.label, 35, this.callback);
   }).after('5th');
+
+  jj.sync('9th', syncMethod).params(jj.label).after('5th');
 
   jj('last', function() {
     var args = Array.prototype.map.call(arguments, function(v) {
@@ -83,8 +85,8 @@ function junjo_test() {
   }).afterAbove();
 
   jj('ehandler', function(e, jfn) {
-    consolelog(e.message, jfn.label);
-		return false;
+    consolelog(e.message, jfn.label());
+		return true;
   }).catchesAbove();
 
   jj.on('end', function(e, r) {
