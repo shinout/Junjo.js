@@ -9,8 +9,9 @@ const Junjo = (function() {
    * constructor 
    *
    * @param (Object) options :
-   *  (function) defaultCatcher : default catcher (called when errors are thrown in a series of processes)
-   *
+   *  (function) catcher      : default catcher (called when errors are thrown in a series of processes)
+   *  (boolean)  nodeCallback : if true, if the first argument in the callback is not null (it means an error happened), throw the error.
+   *  (number) timeout        : time to timeout [sec]
    **/
   const Junjo = function(options) {
     options = options || {};
@@ -39,40 +40,31 @@ const Junjo = (function() {
 
     // private properties
     props[fJunjo.id] = {
-      jfncs       : [],
-      results     : {},
-      out         : null,
-      err         : null,
-      terminated  : false,
-      funcs_count : 0, // the number of registered functions without catchers.
-      finished    : 0,
-      succeeded   : 0,
-      ends        : [],
-      successEnds : [],
-      errorEnds   : [],
-      runnable    : true,
-      timeout     : 5,
-      node_cb     : false,
-      scope       : new Scope(fJunjo),
-      current     : null
+      jfncs        : [],
+      timeout      : 5,
+      catcher      : null,
+      nodeCallback : false,
+      results      : {},
+      out          : null,
+      err          : null,
+      terminated   : false,
+      funcs_count  : 0, // the number of registered functions without catchers.
+      finished     : 0,
+      succeeded    : 0,
+      ends         : [],
+      successEnds  : [],
+      errorEnds    : [],
+      runnable     : true,
+      scope        : new Scope(fJunjo),
+      current      : null
     };
 
-    if (typeof options.timeout == "number") _(fJunjo).timeout = options.timeout;
-
-    if (typeof options.nodeCallback == "boolean") _(fJunjo).node_cb = options.nodeCallback;
-
-    if (typeof options.onEnd == "function") fJunjo.onEnd(options.onEnd);
-
-    if (typeof options.onSuccessEnd == "function") fJunjo.onSuccessEnd(options.onSuccessEnd);
-
-    if (typeof options.onErrorEnd == "function") fJunjo.onErrorEnd(options.onErrorEnd);
-
-    delete options.onEnd, options.onSuccessEnd, options.onErrorEnd;
-
-    Object.keys(Junjo.prototype).forEach(function(k) {
-      if (typeof options[k] == 'function') {
-        fJunjo[k] = options[k];
-      }
+    [ ['timeout'     , 'number'],
+      ['catcher'     , 'function'],
+      ['nodeCallback', 'boolean']
+    ].forEach(function(v) {
+      var propname = v[0], type = v[1];
+      if (typeof options[propname] == type) _(fJunjo)[propname] = options[propname];
     });
 
     Object.seal(fJunjo);
@@ -88,21 +80,6 @@ const Junjo = (function() {
    */
   Junjo.prototype.terminate = function() {
     _(this).terminated = true;
-  };
-
-  /**
-   * default catcher.
-   *
-   * you can change it by giving "defaultCatcher" options in constructer like :
-   *  new Junjo({defaultCatcher: function(e) {
-   *    console.log("custom default catcher");
-   *    this.terminate();
-   *  });
-   */
-  Junjo.prototype.defaultCatcher = function(e) {
-    console.error(e.stack || e.message || e);
-    this.terminate();
-    return false;
   };
 
   /**
@@ -337,27 +314,27 @@ const Junjo = (function() {
     Object.defineProperty(this, 'id', { value : ++current_id, writable : false});
     // private properties
     props[this.id] = {
-      func        : fn,              // registered function
-      junjo       : junjo,           // instanceof Junjo
-      callbacks   : [],              // callback functions
-      args        : [],              // arguments passed from each dependent functions
-      afters      : [],              // labels of functions executed before this function
-      after_prev  : false,           // if true, executed after the previously registered function
-      after_above : false,           // if true, executed after all the registered function above.
-      params      : [],              // parameters to be given to the function. if empty, original callback arguments is used.
-      scope       : _(junjo).scope,  // "this" scope to execute.
-      catcher     : null,            // execute when the function throws an error.
-      catches     : [],              // Array of labels. If the function with the label throws an error, this function will rescue().
-      catch_prev  : false,           // catches previous function or not.
-      catch_above : false,           // catches all functions registered before.
-      timeout_id  : null,            // id of timeout checking function
-      counter     : 0,               // until 0, decremented per each call, then execution starts.
-      called      : false,           // execution started or not
-      done        : false,           // execution ended or not
-      error       : false,           // error occurred or not
-      cb_accessed : false,           // whether callback is accessed via "this.callback", this means asynchronous.
-      cb_called   : false,           // whether callback is called or not
-      node_cb     : _(junjo).node_cb // node-style callback or not
+      func         : fn,                   // registered function
+      junjo        : junjo,                // instanceof Junjo
+      callbacks    : [],                   // callback functions
+      args         : [],                   // arguments passed from each dependent functions
+      afters       : [],                   // labels of functions executed before this function
+      after_prev   : false,                // if true, executed after the previously registered function
+      after_above  : false,                // if true, executed after all the registered function above.
+      params       : [],                   // parameters to be given to the function. if empty, original callback arguments is used.
+      scope        : _(junjo).scope,       // "this" scope to execute.
+      catcher      : null,                 // execute when the function throws an error.
+      catches      : [],                   // Array of labels. If the function with the label throws an error, this function will rescue().
+      catch_prev   : false,                // catches previous function or not.
+      catch_above  : false,                // catches all functions registered before.
+      timeout_id   : null,                 // id of timeout checking function
+      counter      : 0,                    // until 0, decremented per each call, then execution starts.
+      called       : false,                // execution started or not
+      done         : false,                // execution ended or not
+      error        : false,                // error occurred or not
+      cb_accessed  : false,                // whether callback is accessed via "this.callback", this means asynchronous.
+      cb_called    : false,                // whether callback is called or not
+      nodeCallback : _(junjo).nodeCallback // node-style callback or not
     };
   };
 
@@ -405,7 +382,7 @@ const Junjo = (function() {
   };
 
   JFunc.prototype.nodeCallback = function(bool) {
-    _(this).node_cb = (bool !== false);
+    _(this).nodeCallback = (bool !== false);
     return this;
   };
 
@@ -513,6 +490,17 @@ const Junjo = (function() {
     }
   };
 
+  /**
+   * default catcher.
+   */
+  const defaultCatcher = function(e) {
+    console.error(e.stack || e.message || e);
+    this.terminate();
+    return false;
+  };
+
+
+
   const jCallback = function() {
     var _this  = _(this);
     var junjo  = _this.junjo;
@@ -527,7 +515,7 @@ const Junjo = (function() {
     _this.cb_called = true;
 
     var args = arguments;
-    if (_this.node_cb) {
+    if (_this.nodeCallback) {
       if (!_this.error && _this.cb_accessed && args[0]) { // when asynchronous call was succeed
         _this.error = args[0];
       }
@@ -536,8 +524,9 @@ const Junjo = (function() {
     var next = (_this.error) 
       ? (_this.catcher) 
         ? _this.catcher.rescue(_this.error, this)
-        : _this.junjo.defaultCatcher(_this.error, this)
-
+        : (_junjo.catcher)
+          ? _junjo.catcher.call(junjo, _this.error, this)
+          : defaultCatcher.call(junjo, _this.error, this)
       : setResult.call(_this.junjo, this.label(),
           (_this.cb_accessed) ? args : args[0]
         );
