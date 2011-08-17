@@ -1,4 +1,5 @@
 var Junjo = (function() {
+  "use strict";
   /* utility functions */
 
   var args2arr = function(args) {
