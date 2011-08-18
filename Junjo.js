@@ -300,33 +300,66 @@ var Junjo = (function() {
   var JFunc = function(fn, junjo) {
     Object.defineProperty(this, 'id', { value : ++current_id, writable : false});
     // private properties
-    props[this.id] = {
+    props[this.id] = new JFuncProto({
       func         : fn,                   // registered function
       junjo        : junjo,                // instanceof Junjo
       callbacks    : [],                   // callback functions
       afters       : [],                   // labels of functions executed before this function
       params       : [],                   // parameters to be given to the function. if empty, original callback arguments is used.
-      scope        : _(junjo).scope,       // "this" scope to execute.
-      catcher      : null,                 // execute when the function throws an error.
+      async        : null,                 // asynchronous or not.
       timeout_id   : null,                 // id of timeout checking function
       counter      : 0,                    // until 0, decremented per each call, then execution starts.
       called       : false,                // execution started or not
       done         : false,                // execution ended or not
-      async        : null,                 // asynchronous or not.
       cb_accessed  : false,                // whether callback is accessed via "this.callback", this means asynchronous.
-      cb_called    : false,                // whether callback is called or not.
-      nodeCallback : _(junjo).nodeCallback // node-style callback or not
-    };
+      cb_called    : false                 // whether callback is called or not.
+      // catcher      : null,                 // execute when the function throws an error.
+      // scope        : _(junjo).scope,       // "this" scope to execute.
+      // nodeCallback : _(junjo).nodeCallback // node-style callback or not
+    });
   };
+
+  function JFuncProto(obj) {
+    Object.keys(obj).forEach(function(k) {
+      this[k] = obj[k];
+    }, this);
+  }
+
+  ['catcher', 'timeout', 'scope', 'nodeCallback'].forEach(function(propname) {
+    Object.defineProperty(JFuncProto.prototype, propname, {
+      get: function() {
+        if (this['_'+propname] != undefined) return this['_'+propname];
+        return _(this.junjo)[propname];
+      },
+      set: function(v) {this['_'+propname] = v; }
+    });
+  });
 
   JFunc.prototype.scope = function(scope) {
     if (scope != null && typeof scope == 'object') _(this).scope = scope;
     return this;
   };
 
+  JFunc.prototype.nodeCallback = function(bool) {
+    _(this).nodeCallback = (bool !== false);
+    return this;
+  };
+
+  JFunc.prototype.timeout = function(v) {
+    if (typeof v == "number") _(this).timeout = v;
+    return this;
+  };
+
   JFunc.prototype.bind = function() {
     this.scope(Array.prototype.shift.call(arguments));
     return this.params.apply(this, arguments);
+  };
+
+  JFunc.prototype.params = function() {
+    Array.prototype.forEach.call(arguments, function(v) {
+      _(this).params.push(v);
+    }, this);
+    return this;
   };
 
   JFunc.prototype.sync = function(bool) {
@@ -339,15 +372,7 @@ var Junjo = (function() {
     return this;
   };
 
-  JFunc.prototype.params = function() {
-    Array.prototype.forEach.call(arguments, function(v) {
-      _(this).params.push(v);
-    }, this);
-    return this;
-  };
-
   JFunc.prototype.after = function() {
-
     var _this = _(this), _junjo = _(_this.junjo), lbl = _this.label;
     if (arguments.length == 0 && _junjo.labels[lbl] > 0)
       Array.prototype.push.call(arguments, _junjo.jfncs[_junjo.labels[lbl]-1].label());
@@ -367,16 +392,6 @@ var Junjo = (function() {
     return this.after.apply(this, _(_(this).junjo).jfncs.map(function(jfn) {
       return jfn.label();
     }));
-  };
-
-  JFunc.prototype.nodeCallback = function(bool) {
-    _(this).nodeCallback = (bool !== false);
-    return this;
-  };
-
-  JFunc.prototype.timeout = function(v) {
-    if (typeof v == "number") _(this).timeout = v;
-    return this;
   };
 
   JFunc.prototype.catches = function() {
@@ -413,19 +428,14 @@ var Junjo = (function() {
     }
   };
 
-
   // execute the function and its callback, whatever happens.
   JFunc.prototype.execute = function() {
-    var _this  = _(this);
-    var junjo  = _this.junjo;
-    var _junjo = _(junjo);
+    var _this  = _(this), junjo  = _this.junjo, _junjo = _(junjo);
 
     // filters
     if (_junjo.terminated) return; // global-terminated filter
     if (_this.called) return; // execute-only-one-time filter
-
     if (_this.counter-- > 0) return; // dependency filter
-
 
     // preparation
     _this.called = true;
@@ -464,16 +474,15 @@ var Junjo = (function() {
       else { // checking if the callback is called in the function with in timeout[sec]
         if (_junjo.terminated) return;
 
-        var timeout = _this.timeout || _junjo.timeout;
-        if (!timeout) return;
+        if (_this.timeout) return;
 
         var self = this;
         _this.timeout_id = setTimeout(function() {
           if (!_this.cb_called) {
             _this.done = true;
-            jFail.call(self, new Error('callback wasn\'t called within '+timeout+' [sec] in function ' + self.label() + '.' ));
+            jFail.call(self, new Error('callback wasn\'t called within '+ _time.timeout +' [sec] in function ' + self.label() + '.' ));
           }
-        }, timeout * 1000);
+        }, _this.timeout * 1000);
       }
     }
     catch (e) {
@@ -496,9 +505,7 @@ var Junjo = (function() {
 
     var args = (_this.catcher)
       ? _this.catcher.call(_junjo.scope, e, this)
-      : (_junjo.catcher)
-        ? _junjo.catcher.call(_junjo.scope, e, this)
-        : defaultCatcher.call(_junjo.scope, e, this)
+      : defaultCatcher.call(_junjo.scope, e, this);
 
     if (! (args instanceof Array)) 
       args = (args) ? [true, args] : [false];

@@ -80,10 +80,10 @@ function junjo_test() {
     asyncMethod(this.label, 35, this.callback);
   }).afterAbove();
 
-  jj('ehandler', function(e, jfn) {
-    consolelog(e.message, jfn.label());
+  jj.catchesAbove(function(e, jfn) {
+    consolelog("catch!" + e.message, jfn.label());
 		return false;
-  }).catchesAbove();
+  });
 
   jj.on('end', function() {
     consolelog("END");
