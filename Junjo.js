@@ -1,6 +1,7 @@
 var Junjo = (function() {
   "use strict";
-  /* utility functions */
+
+  /** utility functions **/
 
   var args2arr = function(args) {
     return Array.prototype.map.call(args, function(v) {return v;});
@@ -10,7 +11,8 @@ var Junjo = (function() {
     return typeof v == 'object' && v.toString() == '[object Arguments]'; // FIXME there would be more elegant ways...
   };
 
-  // preparation for private properties
+  /** preparation for private properties **/
+
   var props = {};
   var current_id = 0;
   function _(obj) { return props[obj.id]; }
@@ -107,17 +109,12 @@ var Junjo = (function() {
 
   /** public functions **/
 
-  /**
-   * terminate whole process
-   */
+  // terminate whole process
   Junjo.prototype.terminate = function() {
     _(this).terminated = true;
   };
 
-  /**
-   * emitting event asynchronously.
-   * the similar way as EventEmitter in Node.js
-   */
+  // emitting event asynchronously. The similar way as EventEmitter in Node.js
   Junjo.prototype.emit = function() {
     var evtname = Array.prototype.shift.call(arguments);
     var listeners = _(this).listeners[evtname] || [];
@@ -127,17 +124,29 @@ var Junjo = (function() {
     });
   };
 
-  /**
-   * set eventListener
-   */
+  // set eventListener
   Junjo.prototype.on = function(evtname, fn) {
     if (! (_(this).listeners[evtname] instanceof Array)) _(this).listeners[evtname] = [];
     _(this).listeners[evtname].push(fn);
   };
 
-  /**
-   * add catcher
-   */
+  // get jfunc by label
+  Junjo.prototype.get = function(lbl) {
+    var _this = _(this);
+    return _this.jfncs[_this.labels[lbl]];
+  };
+
+  // remove jfunc by label
+  Junjo.prototype.remove = function(lbl) {
+    var _this = _(this);
+    var jfunc = this.get(lbl);
+    _this.jfncs.splice(_this.labels[lbl], 1);
+    delete _this.labels[lbl];
+    _d(jfunc);
+    return this;
+  };
+
+  // add catcher
   Junjo.prototype.catches = function() {
     var fn = Array.prototype.pop.call(arguments);
     var _this = _(this);
@@ -146,15 +155,14 @@ var Junjo = (function() {
     }
     else {
       Array.prototype.forEach.call(arguments, function(lbl) {
-        if (_this.jfncs[_this.labels[lbl]] ) _(_this.jfncs[_this.labels[lbl]]).catcher = fn;
-      });
+        var jfunc = this.get(lbl);
+        if (jfunc) _(jfunc).catcher = fn;
+      }, this);
     }
     return this;
   };
 
-  /**
-   * add catcher to all the functions registered previously, except those already have a catcher.
-   */
+  // add catcher to all the functions registered previously, except those already have a catcher.
   Junjo.prototype.catchesAbove = function(fn) {
     _(this).jfncs.forEach(function(jfnc) {
       if (!_(jfnc).catcher) _(jfnc).catcher = fn;
@@ -162,24 +170,23 @@ var Junjo = (function() {
     return this;
   };
 
+  // set synchronous jfunc
   Junjo.prototype.sync = function() {
     return this.apply(null, arguments).sync();
   };
 
+  // set asynchronous jfunc
   Junjo.prototype.async = function() {
     return this.apply(null, arguments).async();
   };
 
-  /**
-   * get result of each process. 
-   * 
-   * @param lbl : label of processes, if it is not given, an object which contains all results is returned.
-   */
+  // get result of each process.
   Junjo.prototype.results = function(lbl) {
     if (lbl == undefined) return _(this).results;
     return _(this).results[lbl];
   };
 
+  // set another Junjo object which executes before this.
   Junjo.prototype.after = function(jn) {
     var self = this;
     jn.on('end', function(err, out) {
@@ -190,9 +197,7 @@ var Junjo = (function() {
     return this;
   };
 
-  /**
-   * run all the registered functions
-   */
+   // run all the registered jfunc
   Junjo.prototype.run = function() {
     var _this = _(this);
     if (!_this.runnable) return this;
@@ -210,7 +215,7 @@ var Junjo = (function() {
   // deprecated.
   Junjo.prototype.register = function() {console.error('Junjo.prototype.register is deprecated.')};
 
-  // private functions 
+  /** private functions **/
 
   var defaultCatcher = function(e) {
     console.error(e.stack || e.message || e);
@@ -246,9 +251,7 @@ var Junjo = (function() {
   };
 
 
-  /** 
-   * private class KeyPath
-   */
+  /** private class KeyPath **/
   var KeyPath = function() {
     this.keypath = args2arr(arguments);
   }
@@ -260,9 +263,7 @@ var Junjo = (function() {
    }, obj);
   };
 
-  /** 
-   * private class Scope
-   */
+  /** private class Scope **/
   var Scope = function(junjo) {
     Object.defineProperties(this, {
       junjo : {value: junjo, writable: false},
@@ -378,24 +379,17 @@ var Junjo = (function() {
     return this;
   };
 
-  JFunc.prototype.remove = function() {
-    var _this = _(this), _junjo = _(_this.junjo); 
-    _junjo.jfncs.splice(_junjo.labels[_this.label], 1);
-    delete _junjo.labels[_this.label];
-    _d(this);
-  };
-
   JFunc.prototype.catches = function() {
     var junjo = _(this).junjo;
     Array.prototype.push.call(arguments, _(this).func);
-    this.remove(); // delete this object
+    junjo.remove(this.label()); // delete this object
     return junjo.catches.apply(junjo, arguments);
   };
 
   JFunc.prototype.catchesAbove = function() {
     var junjo = _(this).junjo;
     var func  = _(this).func;
-    this.remove(); // delete this object
+    junjo.remove(this.label()); // delete this object
     return junjo.catchesAbove.call(junjo, func);
   };
 
@@ -410,10 +404,10 @@ var Junjo = (function() {
       if (v === undefined) return this;
       if (typeof v != 'string') throw new Error('cannot set a non-string label.');
 
+      _(this).label = v;
       var _this = _(this), _junjo = _(_this.junjo); 
       var num = _junjo.labels[_this.label];
       delete _junjo.labels[_this.label];
-      _(this).label = v;
       _junjo.labels[v] = num;
       return this;
     }
@@ -488,7 +482,7 @@ var Junjo = (function() {
     }
   };
 
-  // private functions of JFunc
+  /** private functions of JFunc **/
 
   var isSync = function(_this) {
       return (_this.async === false || _this.async === null && !_this.cb_accessed);
