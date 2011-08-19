@@ -40,24 +40,24 @@ function junjo_test() {
   });
 
   jj('1st', function() {
+    this.shared.hoge = "HogeHoge";
     throw "II";
     asyncMethod(this.label(), 10, this.callback);
-    this.hoge = "HogeHoge";
   });
 
   jj('2nd', function() {
     asyncMethod(jj.scope.label(), 20, jj.scope.callback);
-    console.log(jj.scope.hoge);
-    console.log(this.hoge);
+    console.log(jj.scope.shared.hoge);
+    console.log(this.shared.hoge);
     throw "II";
-    jj.scope.abc = "ABC";
+    jj.scope.shared.abc = "ABC";
   }).scope({hoge: 'FugaFuga'});
 
   jj('3rd', function() {
     asyncMethod(this.label(), 5, this.callback);
-    console.log(this.hoge);
+    console.log(this.shared.hoge);
     throw "II";
-    console.log(this.abc);
+    console.log(this.shared.abc);
   }).after('1st');
 
   jj('4th', function() {
