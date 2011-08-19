@@ -56,6 +56,7 @@ var Junjo = (function() {
       finished     : 0,     // the number of finished functions
       listeners    : {},    // eventlisteners
       runnable     : true,  // allowable to run or not
+      running      : false, // running or not
       current      : null   // pointer to current function
     };
 
@@ -98,6 +99,11 @@ var Junjo = (function() {
         if (this.current) return _(this.current).label;
         return new KeyPath(['label']);
       },
+      set : function() {}
+    },
+
+    runnable : {
+      get : function () { return _(this).runnable && !_(this).running },
       set : function() {}
     }
   });
@@ -231,8 +237,8 @@ var Junjo = (function() {
    // run all the registered jfunc
   Junjo.prototype.run = function() {
     var _this = _(this);
-    if (!_this.runnable) return this;
-    _this.runnable = true;
+    if (!this.runnable) return this; // checking _this.runnable && !_this.running
+    _this.running = true;
 
     var fncs = {};
     var args = arguments;
