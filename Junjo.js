@@ -317,7 +317,7 @@ var Junjo = (function() {
       called       : false,                  // execution started or not
       done         : false,                  // execution ended or not
       cb_accessed  : false,                  // whether callback is accessed via "this.callback", this means asynchronous.
-      cb_called    : false,                  // whether callback is called or not.
+      cb_called    : false                   // whether callback is called or not.
     };
 
     ['catcher', 'timeout', 'nodeCallback'].forEach(function(propname) {
