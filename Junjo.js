@@ -173,9 +173,13 @@ var Junjo = (function() {
   Junjo.prototype.remove = function(lbl) {
     var _this = _(this);
     var jfunc = this.get(lbl);
-    _this.jfncs.splice(_this.labels[lbl], 1);
+    var num = _this.labels[lbl];
+    _this.jfncs.splice(num, 1);
     delete _this.labels[lbl];
     _d(jfunc);
+    for (var i=num, l=_this.jfncs.length; i<l; i++) {
+      _this.labels[_this.jfncs[i].label()] = i;
+    }
     return this;
   };
 

@@ -58,6 +58,11 @@ function junjo_test() {
     asyncMethod(this.label(), 20, this.callback);
   }).after('2nd').async();
 
+  jj('del', function() {
+    console.log("DEL");
+  });
+
+
   jj('5th', function() {
     asyncMethod(this.label(), 20, this.callback);
   }).after('1st', '2nd');
@@ -65,6 +70,16 @@ function junjo_test() {
   jj('6th', syncMethod).params(jj.label).after('4th'),
 
   jj('7th', asyncMethod).params(jj.label, 100, jj.callback).after(),
+
+  jj.remove('del');
+  console.log("--------- del test----------");
+  console.log(jj.get('3rd').label());
+  console.log(jj.get('4th').label());
+  console.log(jj.get('5th').label());
+  console.log(jj.get('6th').label());
+  console.log(jj.get('7th').label());
+  console.log("--------- end of del test----------");
+
 
   jj('8th', function() {
     asyncMethod(this.label(), 35, this.callback);
