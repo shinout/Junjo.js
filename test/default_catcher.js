@@ -41,12 +41,12 @@ function junjo_test() {
 
   jj('1st', function() {
     throw "II";
-    asyncMethod(this.label, 10, this.callback);
+    asyncMethod(this.label(), 10, this.callback);
     this.hoge = "HogeHoge";
   });
 
   jj('2nd', function() {
-    asyncMethod(jj.scope.label, 20, jj.scope.callback);
+    asyncMethod(jj.scope.label(), 20, jj.scope.callback);
     console.log(jj.scope.hoge);
     console.log(this.hoge);
     throw "II";
@@ -54,18 +54,18 @@ function junjo_test() {
   }).scope({hoge: 'FugaFuga'});
 
   jj('3rd', function() {
-    asyncMethod(this.label, 5, this.callback);
+    asyncMethod(this.label(), 5, this.callback);
     console.log(this.hoge);
     throw "II";
     console.log(this.abc);
   }).after('1st');
 
   jj('4th', function() {
-    asyncMethod(this.label, 20, this.callback);
+    asyncMethod(this.label(), 20, this.callback);
   }).after('2nd');
 
   jj('5th', function() {
-    asyncMethod(this.label, 20, this.callback);
+    asyncMethod(this.label(), 20, this.callback);
     throw "II";
   }).after('1st', '2nd');
 
@@ -74,12 +74,12 @@ function junjo_test() {
   jj('7th', asyncMethod).params(jj.label, 15, jj.callback).after();
 
   jj('8th', function() {
-    asyncMethod(this.label, 35, this.callback);
+    asyncMethod(this.label(), 35, this.callback);
   }).after('5th');
 
   jj('last', function() {
     consolelog(Array.prototype.join.call(arguments, ' + '));
-    asyncMethod(this.label, 35, this.callback);
+    asyncMethod(this.label(), 35, this.callback);
   }).afterAbove();
 
   jj.on('end', function() {

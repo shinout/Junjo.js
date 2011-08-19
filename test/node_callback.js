@@ -36,35 +36,35 @@ function junjo_test() {
 	});
 
   jj('1st', function() {
-    asyncMethod(this.label, 10, this.callback);
+    asyncMethod(this.label(), 10, this.callback);
   });
 
   jj('2nd', function() {
-    asyncMethod(this.label, 20, this.callback);
+    asyncMethod(this.label(), 20, this.callback);
   });
 
   jj('3rd', function() {
-    asyncMethod(this.label, 5, this.callback);
+    asyncMethod(this.label(), 5, this.callback);
   }).after('1st');
 
   jj('4th', function() {
-    asyncMethod(this.label, 20, this.callback);
+    asyncMethod(this.label(), 20, this.callback);
   }).after('2nd');
 
   jj('5th', function() {
-    asyncMethod(this.label, 20, this.callback);
+    asyncMethod(this.label(), 20, this.callback);
   }).after('1st', '2nd');
 
   jj('6th', function() {
-    syncMethod(this.label);
+    syncMethod(this.label());
   }).after('4th').params();
 
   jj('7th', function() {
-    asyncMethod(this.label, 15, this.callback);
+    asyncMethod(this.label(), 15, this.callback);
   }).after();
 
   jj('8th', function() {
-    asyncMethod(this.label, 35, this.callback);
+    asyncMethod(this.label(), 35, this.callback);
   }).after('5th');
 
   jj('last', function() {
@@ -77,7 +77,7 @@ function junjo_test() {
     });
 
     consolelog(args.join(' + '));
-    asyncMethod(this.label, 35, this.callback);
+    asyncMethod(this.label(), 35, this.callback);
   }).afterAbove();
 
   jj.catchesAbove(function(e, jfn) {
