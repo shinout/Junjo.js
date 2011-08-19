@@ -32,14 +32,7 @@ var Junjo = (function() {
     // this function is returned in this constructor.
     // It behaviors as a object .
     var fJunjo = function() {
-      var label   = (typeof arguments[0] != 'function') ? Array.prototype.shift.call(arguments) : undefined;
-      var jfn     = new JFunc(arguments[0], fJunjo);
-      var _fJunjo = _(fJunjo);
-      var num     = _fJunjo.jfncs.push(jfn) -1;
-      if (label == undefined) label = num;
-      _(jfn).label = label;
-      _fJunjo.labels[label] = num;
-      return jfn;
+      return Junjo.prototype.register.apply(fJunjo, arguments);
     };
 
     // fJunjo extends Junjo.prototype
@@ -116,6 +109,18 @@ var Junjo = (function() {
 
 
   /** public functions **/
+
+  // register a function
+  Junjo.prototype.register = function() {
+    var label   = (typeof arguments[0] != 'function') ? Array.prototype.shift.call(arguments) : undefined;
+    var jfn     = new JFunc(arguments[0], this);
+    var _this= _(this);
+    var num     = _this.jfncs.push(jfn) -1;
+    if (label == undefined) label = num;
+    _(jfn).label = label;
+    _this.labels[label] = num;
+    return jfn;
+  };
 
   // get result of each process.
   Junjo.prototype.results = function(lbl) {
@@ -234,8 +239,6 @@ var Junjo = (function() {
     return this;
   };
 
-  // deprecated.
-  Junjo.prototype.register = function() {console.error('Junjo.prototype.register is deprecated.')};
 
   /** private functions **/
 
