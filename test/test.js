@@ -35,20 +35,20 @@ function junjo_test() {
 
   jj('1st', function() {
     asyncMethod(this.label, 10, this.callback);
-    this.hoge = "HogeHoge";
+    this.shared.hoge = "HogeHoge";
   });
 
   jj('2nd', function() {
-    asyncMethod(jj.scope.label, 20, jj.scope.callback);
-    console.log(jj.scope.hoge);
+    asyncMethod(jj.current.label, 20, jj.current.callback);
+    console.log(jj.current.shared.hoge);
     console.log(this.hoge);
-    jj.scope.abc = "ABC";
+    jj.current.shared.abc = "ABC";
   }).scope({hoge: 'FugaFuga'});
 
   jj.async('3rd', function() {
     asyncMethod(this.label, 5, this.callback);
-    console.log(this.hoge);
-    console.log(this.abc);
+    console.log(this.shared.hoge);
+    console.log(this.shared.abc);
     this.out[this.label] = 'output result';
     console.log(this.out);
   }).after('1st');
@@ -71,6 +71,9 @@ function junjo_test() {
 
   jj.sync('9th', syncMethod).params(jj.label).after('5th');
 
+  jj.sync('10th', syncMethod).params(jj.args(0)).after('9th');
+  jj.sync('11th', syncMethod).params(jj.results('10th')).after('9th');
+
   jj('last', function() {
     var args = Array.prototype.map.call(arguments, function(v) {
       switch (v) {
@@ -84,10 +87,10 @@ function junjo_test() {
     asyncMethod(this.label, 35, this.callback);
   }).afterAbove();
 
-  jj('ehandler', function(e, jfn) {
+  jj.catchesAbove(function(e, jfn) {
     consolelog(e.message, jfn.label());
 		return true;
-  }).catchesAbove();
+  });
 
   jj.on('end', function(e, r) {
     consolelog("END", e, r);
