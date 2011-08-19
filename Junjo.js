@@ -483,7 +483,7 @@ var Junjo = (function() {
       var ret = _this.func.apply(_this.scope || this, _this.args);
       _this.done = true;
       if (isSync(_this)) { // synchronous
-        jCallback.call(this, ret);
+        _this.callback(ret);
       }
       else { // checking if the callback is called in the function with in timeout[sec]
         if (_junjo.terminated) return;
