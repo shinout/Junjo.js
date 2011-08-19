@@ -82,11 +82,8 @@ var Junjo = (function() {
   /** public properties **/
 
   Object.defineProperty(Junjo.prototype, 'scope', {
-    get: function() {
-      return _(this).scope;
-    },
-    set: function() {},
-    enumerable: true
+    get: function() { return _(this).scope; },
+    set: function() {}
   });
 
   // proxy to the scope object.
@@ -96,10 +93,15 @@ var Junjo = (function() {
         if (_(this).current) return this.scope[propname];
         return new KeyPath(propname);
       },
-      set: function() {},
-      enumerable: true
+      set: function() {}
     });
   });
+
+  // get result of each process.
+  Junjo.prototype.results = function(lbl) {
+    if (lbl == undefined) return _(this).results;
+    return _(this).results[lbl];
+  };
 
   // Junjo extends Function prototype
   Object.getOwnPropertyNames(Function.prototype).forEach(function(k) {
@@ -178,12 +180,6 @@ var Junjo = (function() {
   // set asynchronous jfunc
   Junjo.prototype.async = function() {
     return this.apply(null, arguments).async();
-  };
-
-  // get result of each process.
-  Junjo.prototype.results = function(lbl) {
-    if (lbl == undefined) return _(this).results;
-    return _(this).results[lbl];
   };
 
   // set another Junjo object which executes before this.
@@ -306,6 +302,7 @@ var Junjo = (function() {
       callbacks    : [],                   // callback functions
       afters       : [],                   // labels of functions executed before this function
       params       : [],                   // parameters to be given to the function. if empty, original callback arguments is used.
+      args         : [],                   // arguments passed to this.execute()
       async        : null,                 // asynchronous or not.
       timeout_id   : null,                 // id of timeout checking function
       counter      : 0,                    // until 0, decremented per each call, then execution starts.
@@ -445,9 +442,10 @@ var Junjo = (function() {
       _this.params.forEach(function(param, k) {
         if (param instanceof KeyPath) _this.params[k] = param.get(_junjo.scope);
       });
+      _this.args = _this.params;
     }
     else if (_this.afters.length) {
-      _this.params = _this.afters.reduce(function(arr, lbl) {
+      _this.args = _this.afters.reduce(function(arr, lbl) {
         var val = _junjo.results[lbl];
         if (is_arguments(val)) {
           Array.prototype.forEach.call(val, function(v) {
@@ -461,12 +459,12 @@ var Junjo = (function() {
       }, []);
     }
     else {
-      _this.params = arguments;
+      _this.args = args2arr(arguments);
     }
 
     // execution
     try {
-      var ret = _this.func.apply(_this.scope, _this.params);
+      var ret = _this.func.apply(_this.scope, _this.args);
       _this.done = true;
       if (isSync(_this)) { // synchronous
         jCallback.call(this, ret);
