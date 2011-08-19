@@ -10,6 +10,7 @@ var Junjo = (function() {
   var is_arguments = function(v) {
     return typeof v == 'object' && v.toString() == '[object Arguments]'; // FIXME there would be more elegant ways...
   };
+  var empty = function() {};
 
   /** preparation for private properties **/
 
@@ -83,7 +84,7 @@ var Junjo = (function() {
   Object.defineProperties(Junjo.prototype, {
     current : {
       get: function() { return _(this).current; },
-      set: function() {}
+      set: empty
     },
 
     callback : {
@@ -91,7 +92,7 @@ var Junjo = (function() {
         if (this.current) return this.current.callback; // cb_accessed.
         return new KeyPath(['callback']).name('cb');
       },
-      set: function() {}
+      set: empty
     },
 
     label : {
@@ -99,12 +100,12 @@ var Junjo = (function() {
         if (this.current) return _(this.current).label;
         return new KeyPath(['label']);
       },
-      set : function() {}
+      set : empty
     },
 
     runnable : {
       get : function () { return _(this).runnable && !_(this).running },
-      set : function() {}
+      set : empty
     }
   });
 
@@ -345,7 +346,7 @@ var Junjo = (function() {
           _(this).cb_accessed = true;
           return _(this).callback;
         },
-        set : function() {},
+        set : empty,
         enumerable: true
       }
     });
