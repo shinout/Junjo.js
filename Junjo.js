@@ -88,7 +88,7 @@ var Junjo = (function() {
     callback : {
       get: function() {
         if (this.current) return this.current.callback; // cb_accessed.
-        return new KeyPath(['callback']);
+        return new KeyPath(['callback']).name('cb');
       },
       set: function() {}
     },
@@ -293,6 +293,8 @@ var Junjo = (function() {
    }, this.obj || obj);
   };
 
+  KeyPath.prototype.name = function(n) { this.name = n; return this };
+
   /***
    * private class JFunc
    * function wrapper
@@ -477,11 +479,8 @@ var Junjo = (function() {
 
     if (_this.params.length) {
       _this.params.forEach(function(param, k) {
-        //if (param instanceof KeyPath) _this.params[k] = param.get(_this);
-        if (param instanceof KeyPath) {
-          _this.params[k] = param.get(_this);
-        }
-      });
+        if (param instanceof KeyPath) _this.params[k] = param.get(param.name == 'cb' ? this : _this);
+      }, this);
       _this.args = _this.params;
     }
 
