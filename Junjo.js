@@ -228,7 +228,7 @@ var Junjo = (function() {
     var fncs = {};
     var args = arguments;
     _this.jfncs.forEach(function(jfn) {
-      jfn.execute.apply(jfn, args);
+      jExecute.apply(jfn, args);
     });
 
     return this;
@@ -436,8 +436,9 @@ var Junjo = (function() {
     }
   };
 
-  // execute the function and its callback, whatever happens.
-  JFunc.prototype.execute = function() {
+  /** private functions of JFunc **/
+
+  var jExecute = function() {
     var _this  = _(this), _junjo = _(this.junjo);
 
     // filters
@@ -504,8 +505,6 @@ var Junjo = (function() {
     }
   };
 
-  /** private functions of JFunc **/
-
   var isSync = function(_this) {
       return (_this.async === false || _this.async === null && !_this.cb_accessed);
   };
@@ -559,8 +558,7 @@ var Junjo = (function() {
 
     if (succeeded) {
       _this.callbacks.forEach(function(cb_jfn) {
-        // cb_jfn.execute.apply(cb_jfn, args);
-        cb_jfn.execute.apply(cb_jfn);
+        jExecute.apply(cb_jfn);
       });
     }
   };
