@@ -340,6 +340,7 @@ var Junjo = (function() {
       args         : [],                     // arguments passed to this.execute()
       timeout_id   : null,                   // id of timeout checking function
       counter      : 0,                      // until 0, decremented per each call, then execution starts.
+      emitters     : [],                     // event emitters
       called       : false,                  // execution started or not
       done         : false,                  // execution ended or not
       cb_accessed  : false,                  // whether callback is accessed via "this.callback", this means asynchronous.
@@ -404,6 +405,25 @@ var Junjo = (function() {
     Array.prototype.forEach.call(arguments, function(v) {
       _(this).params.push(v);
     }, this);
+    return this;
+  };
+
+  JFunc.prototype.emitOn = function(emitter, evtname, newname) {
+    var self = this;
+    emitter.on(evtname, function() {
+      Array.prototype.unshift.call(arguments, newname || evtname);
+      self.junjo.emit.apply(self.junjo, arguments);
+    });
+    this.emitEnd(emitter);
+    return self;
+  };
+
+  JFunc.prototype.emitEnd = function(emitter) {
+    if ($(this).emitters.indexOf(emitter) < 0) {
+      emitter.on('end', this.callback);
+      emitter[(typeof emitter.once == 'function') ? 'once' : 'on']('error', jFail.bind(this));
+      $(this).emitters.push(emitter);
+    }
     return this;
   };
 
