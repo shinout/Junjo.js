@@ -40,7 +40,7 @@ var Junjo = (function() {
     if(fJunjo.__proto__)
       fJunjo.__proto__ = Junjo.prototype;
     else 
-      Object.keys(Junjo.prototype).forEach(function(k) { _[k] = Junjo.prototype[k]; });
+      Object.keys(Junjo.prototype).forEach(function(k) { fJunjo[k] = Junjo.prototype[k]; });
 
     Object.defineProperty(fJunjo, 'id', { value : ++current_id, writable : false});
 
@@ -52,7 +52,7 @@ var Junjo = (function() {
       timeout      : 5,     // timeout [sec]
       catcher      : null,  // default catcher
       nodeCallback : false, // use node-style callback or not
-      runnable     : true,  // allowable to run or not
+      runnable     : true   // allowable to run or not
     };
 
     variables[fJunjo.id] = {
@@ -244,10 +244,14 @@ var Junjo = (function() {
     if (!this.runnable) return this; // checking _this.runnable && !_this.running
     $(this).running = true;
 
+    Object.freeze(_this);
+
     var fncs = {};
     var args = arguments;
     _this.jfncs.forEach(function(jfn) {
-      $(jfn).counter = _(jfn).afters.length;
+      var _jfn = _(jfn);
+      $(jfn).counter = _jfn.afters.length;
+      Object.freeze(_jfn);
     });
 
     _this.jfncs.forEach(function(jfn) {
@@ -414,6 +418,7 @@ var Junjo = (function() {
   };
 
   JFunc.prototype.after = function() {
+    if ($(this.junjo).running) throw new Error("Cannot call after() while during execution.");
     var _this = _(this), _junjo = _(this.junjo), lbl = _this.label;
     if (arguments.length == 0 && _junjo.labels[lbl] > 0)
       Array.prototype.push.call(arguments, _junjo.jfncs[_junjo.labels[lbl]-1].label());
@@ -429,18 +434,21 @@ var Junjo = (function() {
   };
 
   JFunc.prototype.afterAbove = function(bool) {
+    if ($(this.junjo).running) throw new Error("Cannot call afterAbove() while during execution.");
     return this.after.apply(this, _(this.junjo).jfncs.map(function(jfn) {
       return jfn.label();
     }));
   };
 
   JFunc.prototype.catches = function() {
+    if ($(this.junjo).running) throw new Error("Cannot call catches() while during execution.");
     Array.prototype.push.call(arguments, _(this).func);
     this.junjo.remove(this.label()); // delete this object
     return this.junjo.catches.apply(this.junjo, arguments);
   };
 
   JFunc.prototype.catchesAbove = function() {
+    if ($(this.junjo).running) throw new Error("Cannot call catchesAbove() during execution.");
     var func  = _(this).func;
     this.junjo.remove(this.label()); // delete this object
     return this.junjo.catchesAbove.call(this.junjo, func);

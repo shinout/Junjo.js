@@ -33,6 +33,43 @@ function junjo_test() {
   var J = (node) ? require('../Junjo') : Junjo;
   var jj = new J();
 
+  jj('labelseterr', function() {
+    this.label('f');
+  });
+
+  jj('timeouterr', function() {
+    this.timeout(3);
+  });
+
+  jj('nodecberr', function() {
+    this.nodeCallback();
+  });
+
+  jj('scoperr', function() {
+    this.scope({});
+  });
+
+  jj('catcheserr', function() {
+    this.catches('nodecberr');
+  });
+
+  jj('catchesAboveErr', function() {
+    this.catchesAbove('nodecberr');
+  });
+
+  jj('afterErr', function() {
+    this.after('nodecberr');
+  });
+
+  jj('afterAboveErr', function() {
+    this.afterAbove('nodecberr');
+  });
+
+  jj.catchesAbove(function(e, jfn) {
+    console.error(e.message + ' from ' + jfn.label());
+    return true;
+  });
+
   jj('1st', function() {
     asyncMethod(this.label(), 10, this.callback);
     this.shared.hoge = "HogeHoge";
