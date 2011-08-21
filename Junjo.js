@@ -16,8 +16,8 @@ var Junjo = (function() {
   /** preparation for private properties **/
 
   var props = {}, variables = {}, current_id = 0;
-  function _(obj) { return props[obj.id]; }        // unconfigurable properties after running
-  function $(obj) { return variables[obj.id]; }    // configurable properties after running
+  function _(obj) { return props[obj.id] }        // unconfigurable properties after running
+  function $(obj) { return variables[obj.id] }    // configurable properties after running
   function D(obj) { delete props[obj.id], variables[obj.id]} // deletion
 
   /** constructor **/
@@ -25,9 +25,7 @@ var Junjo = (function() {
     options = options || {};
 
     // this function is returned in Junjo().
-    var fJunjo = function() {
-      return Junjo.prototype.register.apply(fJunjo, arguments);
-    };
+    var fJunjo = function() { return Junjo.prototype.register.apply(fJunjo, arguments) };
 
     // fJunjo extends Junjo.prototype
     if(fJunjo.__proto__)
@@ -205,15 +203,9 @@ var Junjo = (function() {
     return this;
   };
 
-  // set synchronous jfunc
-  Junjo.prototype.sync = function() {
-    return this.apply(null, arguments).sync();
-  };
-
-  // set asynchronous jfunc
-  Junjo.prototype.async = function() {
-    return this.apply(null, arguments).async();
-  };
+  // set synchronous/asynchronous jfunc
+  Junjo.prototype.sync  = function() { return this.register.apply(this, arguments).sync() };
+  Junjo.prototype.async = function() { return this.register.apply(this, arguments).async() };
 
   // set another Junjo object which executes before this.
   Junjo.prototype.after = function(jn) {

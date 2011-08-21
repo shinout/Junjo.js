@@ -118,7 +118,7 @@ function junjo_test() {
   console.log("--------- end of del test----------");
 
 
-  jj('8th', function() {
+  jj.async('8th', function() {
     asyncMethod(this.label(), 35, this.callback);
   }).after('5th');
 
