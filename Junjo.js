@@ -25,7 +25,7 @@ var Junjo = (function() {
     options = options || {};
 
     // this function is returned in Junjo().
-    var fJunjo = function() { return Junjo.prototype.register.apply(fJunjo, arguments) };
+    var fJunjo = function() { return fJunjo.register.apply(fJunjo, arguments) };
 
     // fJunjo extends Junjo.prototype
     if(fJunjo.__proto__)
@@ -51,10 +51,8 @@ var Junjo = (function() {
     fJunjo.err    = null; // error to pass to the "end" event
     fJunjo.out    = {};   // final output to pass to the "end" event
 
-    Object.seal(fJunjo);
     return fJunjo;
   };
-
 
   /** public properties, defined in Junjo.prototype **/
   Object.defineProperties(Junjo.prototype, {
@@ -68,14 +66,7 @@ var Junjo = (function() {
     },
 
     catcher : {
-      get : function() {
-        return _(this).catcher || function(e, jfunc) {
-          console.error(e.stack || e.message || e);
-          this.err = e;
-          this.terminate();
-          return false;
-        };
-      },
+      get : function()  { return _(this).catcher || Junjo.defaultCatcher },
       set : function(v) { if (typeof v == 'function') _(this).catcher = v }
     },
 
@@ -570,6 +561,16 @@ var Junjo = (function() {
     if (succeeded) _this.callbacks.forEach(function(cb_jfn) { jExecute.apply(cb_jfn) });
   };
 
+	/** public static functions **/
+
+	Junjo.defaultCatcher = function(e, jfunc) {
+    console.error(e.stack || e.message || e);
+    this.err = e;
+    this.terminate();
+    return false;
+  };
+
+	Object.freeze(Junjo);
   return Junjo;
 })();
 
