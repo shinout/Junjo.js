@@ -3,6 +3,9 @@ var mongo      = require('mongodb'),
     Connection = mongo.Connection,
     Server     = mongo.Server;
 
+var N = 0; console.time(N);
+function showTime() { console.timeEnd(N); console.time(++N); }
+
 var host = process.env['MONGO_NODE_DRIVER_HOST'] != null ? process.env['MONGO_NODE_DRIVER_HOST'] : 'localhost';
 var port = process.env['MONGO_NODE_DRIVER_PORT'] != null ? process.env['MONGO_NODE_DRIVER_PORT'] : Connection.DEFAULT_PORT;
 var client = new DB('node-mongo-examples', new Server(host, port, {}), {});
@@ -10,62 +13,64 @@ console.log("connecting to " + host);
 
 var Junjo = require('../Junjo');
 
-var and = new Junjo({ 
+var j = new Junjo({
   nodeCallback : true,
   timeout      : 3,
   catcher      : function(e, jfn) {
     console.error(jfn.label());
-    return and.defaultCatcher(e, jfn);
+    return j.defaultCatcher(e, jfn);
   }
 });
 
-and(function() { client.open(this.callback) })
+j.getKPF = function(jfn) {
+  var resultKP = j.results(jfn.label(), 1);
+  return function() {
+    var args = arguments;
+    var next_jfn = j(function() {
+      showTime();
+      var obj = resultKP.get();
+      var fname = Array.prototype.shift.call(args);
+      Array.prototype.push.call(args, this.callback);
+      obj[fname].apply(obj, args);
+    }).after(jfn.label());
+    return j.getKPF(next_jfn);
+  };
+};
 
-and(function(err, conn) {
-  this.shared.conn = conn;
-  conn.dropDatabase(this.callback);
-}).after()
+var open = function() { return j.getKPF(j(client.open).bind(client, j.callback)) };
 
-and(function(err, result) {
-  var self = this;
-  this.shared.conn.collection('test', this.callback);
-}).after()
 
-and(function(err, collection) {
-  this.shared.coll = collection;
-  collection.remove({}, this.callback);
-}).after()
+/****** START *********/
+var conn = open();
+conn('dropDatabase');
 
-and(function(err, result) {
-  var coll = this.shared.coll;
-  for (var i = 0; i < 3; i++) {
-    console.log("inserting " + i);
-    coll.insert({a : i});
-  }
-  coll.count(this.callback);
-}).after()
+var coll = conn('collection', 'test');
+coll('remove', {});
 
-and(function(err, count) {
-  console.log('There are ' + count + ' records in the test collection. Here they are:');
-  this.shared.coll.find(this.callback);
-}).after()
+for (var i=0; i<3; i++) coll('insert', {a : i});
 
-and(function(err, cursor) {
-  var self = this;
+coll('count');
+
+j(function(err, count) {
+  showTime();
+  console.log("There are " + count + " records in the test collection. Here they are:");
+}).after();
+
+coll('find');
+
+j(function(err, cursor) {
+  showTime();
   cursor.each(function(err, item) {
-    if (item != null) {
+    if(item != null) {
+      showTime();
       console.log(item);
-      console.log("create at " + new Date(item._id.generationTime));
-    }
-    else {
-      self.shared.coll.drop(self.callback);
+      console.log("created at " + new Date(item._id.generationTime) + "\n")
     }
   });
-}).after().async();
+}).after();
 
-and.on('end', function() {
+j.on('end', function() {
   client.close();
 });
 
-
-and.run();
+j.run();
