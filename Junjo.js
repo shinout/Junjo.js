@@ -66,8 +66,18 @@ var Junjo = (function() {
     },
 
     catcher : {
-      get : function()  { return _(this).catcher || Junjo.defaultCatcher },
+      get : function()  { return _(this).catcher || this.defaultCatcher },
       set : function(v) { if (typeof v == 'function') _(this).catcher = v }
+    },
+
+    defaultCatcher : {
+      value : function(e, jfunc) {
+        console.error(e.stack || e.message || e);
+        this.err = e;
+        this.terminate();
+        return false;
+      },
+      writable : false
     },
 
     nodeCallback : {
@@ -558,16 +568,7 @@ var Junjo = (function() {
     if (succeeded) _this.callbacks.forEach(function(cb_jfn) { jExecute.apply(cb_jfn) });
   };
 
-	/** public static functions **/
-
-	Junjo.defaultCatcher = function(e, jfunc) {
-    console.error(e.stack || e.message || e);
-    this.err = e;
-    this.terminate();
-    return false;
-  };
-
-	Object.freeze(Junjo);
+  Object.freeze(Junjo);
   return Junjo;
 })();
 
