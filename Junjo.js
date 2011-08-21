@@ -39,21 +39,12 @@ var Junjo = (function() {
     props[fJunjo.id] = {
       jfncs        : [],    // registered functions
       labels       : {},    // {label => position of jfncs}
-      listeners    : {},    // eventlisteners
-      timeout      : 5,     // timeout [sec]
-      catcher      : null,  // default catcher
-      nodeCallback : false, // use node-style callback or not
+      listeners    : {}     // eventlisteners
     };
     resetState.call(fJunjo);  // set variables
 
     // properties from options
-    [ ['timeout'     , 'number'],
-      ['catcher'     , 'function'],
-      ['nodeCallback', 'boolean']
-    ].forEach(function(v) {
-      var propname = v[0], type = v[1];
-      if (typeof options[propname] == type) _(fJunjo)[propname] = options[propname];
-    });
+    ['timeout', 'catcher', 'nodeCallback'].forEach(function(k) { fJunjo[k] = options[k] });
 
     /** public properties **/
     fJunjo.shared = {};   // shared values within jfuncs
@@ -70,6 +61,28 @@ var Junjo = (function() {
     current  : { get : function () { return $(this).current }, set: empty },
     runnable : { get : function () { return $(this).runnable && !$(this).running }, set : empty },
     running  : { get : function () { return $(this).running }, set : empty },
+
+    timeout : {
+      get : function() { return (_(this).timeout != null) ? _(this).timeout : 5 },
+      set : function(v) { if (typeof v == 'number') _(this).timeout = v }
+    },
+
+    catcher : {
+      get : function() {
+        return _(this).catcher || function(e, jfunc) {
+          console.error(e.stack || e.message || e);
+          this.err = e;
+          this.terminate();
+          return false;
+        };
+      },
+      set : function(v) { if (typeof v == 'function') _(this).catcher = v }
+    },
+
+    nodeCallback : {
+      get : function() { return !!_(this).nodeCallback },
+      set : function(v) { if (typeof v == 'boolean') _(this).nodeCallback = v }
+    },
 
     callback : {
       get: function() {
@@ -183,7 +196,7 @@ var Junjo = (function() {
   // add catcher to all the functions registered previously, except those already have a catcher.
   Junjo.prototype.catchesAbove = function(fn) {
     _(this).jfncs.forEach(function(jfnc) {
-      if (!_(jfnc).catcher) _(jfnc).catcher = fn;
+      if (!_(jfnc)._catcher) _(jfnc).catcher = fn;
     });
     return this;
   };
@@ -231,13 +244,6 @@ var Junjo = (function() {
       finished     : 0,     // the number of finished functions
       current      : null   // pointer to current function
     };
-  };
-
-  var defaultCatcher = function(e, jfunc) {
-    console.error(e.stack || e.message || e);
-    this.err = e;
-    this.terminate();
-    return false;
   };
 
   var setResult = function(jfn, args_result, use_one) {
@@ -290,28 +296,25 @@ var Junjo = (function() {
 
     // private properties
     props[this.id] = {
-      func         : fn,                     // registered function
-      callback     : jSuccess.bind(this),    // callback function
-      label        : null,                   // label
-      callbacks    : [],                     // callback functions called in jCallback
-      afters       : [],                     // labels of functions executed before this function
-      params       : [],                     // parameters to be given to the function. if empty, original callback arguments is used.
-      async        : null                    // asynchronous or not.
+      func         : fn,                  // registered function
+      callback     : jSuccess.bind(this), // callback function
+      label        : null,                // label
+      callbacks    : [],                  // callback functions called in jCallback
+      afters       : [],                  // labels of functions executed before this function
+      params       : [],                  // parameters to be given to the function. if empty, original callback arguments is used.
+      async        : null                 // asynchronous or not.
     };
 
-    ['catcher', 'timeout', 'nodeCallback'].forEach(function(propname) {
-      Object.defineProperty(this, propname, {
-        get: function() {
-          if (this['_' + propname] != undefined) return this['_' + propname];
-          return _(junjo)[propname];
-        },
-        set: function(v) {this['_' + propname] = v; }
+    ['catcher', 'timeout', 'nodeCallback'].forEach(function(k) {
+      Object.defineProperty(this, k, {
+        get: function()  { return (this['_' + k] != null) ? this['_' + k] : junjo[k] },
+        set: function(v) { this['_' + k] = v }
       });
     }, _(this));
 
     // public properties
     Object.defineProperties(this, {
-      junjo : {value: junjo, writable: false},
+      junjo : {value: junjo, writable: false },
 
       callback : {
         get : function() {
@@ -326,8 +329,8 @@ var Junjo = (function() {
     // proxy to properties in Junjo, for enumerablity, not set to JFunc.prototype.
     ['shared', 'err', 'out'].forEach(function(propname) {
       Object.defineProperty(this, propname, {
-        get : function()  { return this.junjo[propname]},
-        set : function(v) { this.junjo[propname] = v},
+        get : function()  { return this.junjo[propname] },
+        set : function(v) { this.junjo[propname] = v },
         enumerable: true
       });
     }, this);
@@ -528,14 +531,9 @@ var Junjo = (function() {
   var isSync = function(jfn) { return (_(jfn).async === false || _(jfn).async === null && !$(jfn).cb_accessed) };
 
   var jFail = function(e) {
-    console.log(this.label());
-    var _this = _(this), $this = $(this),  _junjo = _(this.junjo);
+    if (jFilter($(this))) return;
 
-    if (jFilter($this)) return;
-
-    var args = (_this.catcher)
-      ? _this.catcher.call(this.junjo, e, this)
-      : defaultCatcher.call(this.junjo, e, this);
+    var args =  _(this).catcher.call(this.junjo, e, this);
 
     if (! (args instanceof Array)) 
       args = (args) ? [true, args] : [false];
@@ -550,11 +548,10 @@ var Junjo = (function() {
   };
 
   var jSuccess = function() {
-    var _this = _(this), $this = $(this);
-    if (_this.nodeCallback && !isSync(this) && arguments[0]) { // checking node-style callback error
+    if (_(this).nodeCallback && !isSync(this) && arguments[0]) { // checking node-style callback error
       return jFail.call(this, arguments[0]);
     }
-    if (jFilter($this)) return;
+    if (jFilter($(this))) return;
 
     Array.prototype.unshift.call(arguments, true);
     return jCallback.apply(this, arguments);
