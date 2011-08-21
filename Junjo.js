@@ -497,10 +497,10 @@ var Junjo = (function() {
       if (v === undefined) return this;
       if (typeof v != 'string') throw new Error('cannot set a non-string label.');
 
-      _(this).label = v;
       var _this = _(this), _junjo = _(this.junjo); 
       var num = _junjo.labels[_this.label];
       delete _junjo.labels[_this.label];
+      _this.label = v;
       _junjo.labels[v] = num;
       return this;
     }

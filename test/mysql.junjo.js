@@ -16,12 +16,13 @@ var jj = new Junjo({
 
 jj(client.query).bind(client, 'use ' + DB_NAME, jj.callback);
 
-jj(client.query).bind(client, 'select * from ' + TBL_NAME + ' limit 10', jj.callback)
+jj(client.query).bind(client, 'select * from ' + TBL_NAME + ' limit 1000,10', jj.callback)
 .label('select');
 
-jj(function() {
-  console.log(arguments);
-}).afterAbove();
+
+jj(function(err, records, f) {
+  console.log(records);
+}).after();
 
 // catcher
 jj.catchesAbove(function(e, jfn) {
