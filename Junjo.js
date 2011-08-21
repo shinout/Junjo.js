@@ -267,7 +267,7 @@ var Junjo = (function() {
   var defaultCatcher = function(e, jfunc) {
     console.error(e.stack || e.message || e);
     this.err = e;
-    this.terminate(); // FIXME
+    this.terminate();
     return false;
   };
 
@@ -285,7 +285,7 @@ var Junjo = (function() {
     if ($this.terminated) {
       var bool  = _this.jfncs.every(function(f) {
         var $jfn = $(f);
-        return $jfn.cb_called || !$jfn.called; // FIXME
+        return $jfn.cb_called || !$jfn.called;
       });
       if (!bool) return;
 
@@ -374,7 +374,7 @@ var Junjo = (function() {
     // proxy to properties in Junjo, for enumerablity, not set to JFunc.prototype.
     ['shared', 'err', 'out'].forEach(function(propname) {
       Object.defineProperty(this, propname, {
-        get : function()  { return this.junjo[propname]}, //FIXME shared, err, out be public!
+        get : function()  { return this.junjo[propname]},
         set : function(v) { this.junjo[propname] = v},
         enumerable: true
       });
@@ -419,10 +419,22 @@ var Junjo = (function() {
   };
 
   JFunc.prototype.emitEnd = function(emitter) {
-    if ($(this).emitters.indexOf(emitter) < 0) {
-      emitter.on('end', this.callback);
-      emitter[(typeof emitter.once == 'function') ? 'once' : 'on']('error', jFail.bind(this));
-      $(this).emitters.push(emitter);
+    var self = this, $this = $(this);
+    if ($this.emitters.indexOf(emitter) < 0) {
+      var cb = this.callback;
+      emitter.on('end', function(){
+        var n = $this.emitters.indexOf(emitter);
+        if (n < 0) return;
+        $this.emitters.splice(n, 1);
+        if ($this.emitters.length == 0) cb(); 
+      });
+      emitter[(typeof emitter.once == 'function') ? 'once' : 'on']('error', function(e) {
+        var n = $this.emitters.indexOf(emitter);
+        if (n < 0) return;
+        $this.emitters.splice(n, 1);
+        if ($this.emitters.length == 0) jFail.bind(self);
+      });
+      $this.emitters.push(emitter);
     }
     return this;
   };
@@ -571,8 +583,8 @@ var Junjo = (function() {
     if (jCallbackFilter($this)) return;
 
     var args = (_this.catcher)
-      ? _this.catcher.call(this.junjo, e, this) //FIXME _junjo.scope
-      : defaultCatcher.call(this.junjo, e, this);  //FIXME _junjo.scope
+      ? _this.catcher.call(this.junjo, e, this)
+      : defaultCatcher.call(this.junjo, e, this);
 
     if (! (args instanceof Array)) 
       args = (args) ? [true, args] : [false];

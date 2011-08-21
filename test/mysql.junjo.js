@@ -14,27 +14,20 @@ var jj = new Junjo({
   nodeCallback: true
 });
 
-//jj(client.query).scope(client).params('use ' + DB_NAME, jj.callback),
-jj(client.query).bind(client, 'use ' + DB_NAME, jj.callback),
+jj(client.query).bind(client, 'use ' + DB_NAME, jj.callback);
 
-jj(client.query).bind(client, 'select * from ' + TBL_NAME, jj.callback)
-.label('select'),
+jj(client.query).bind(client, 'select * from ' + TBL_NAME + ' limit 10', jj.callback)
+.label('select');
 
-jj(console.log).params(jj.args(, 3, 'name')).afterAbove(),
-
-jj(function(err, records, fields) {
-  console.log('field', fields);
-  return "NEXT VALUE";
-}).after("select"),
-
-jj(console.log).params(jj.args(0), jj.callback).after().timeout(1),
-//jj(console.log).params(jj.args(0), jj.callback).after().timeout(0.1),
+jj(function() {
+  console.log(arguments);
+}).afterAbove();
 
 // catcher
-jj(function(e, jfn) {
-  console.log(e.message);
+jj.catchesAbove(function(e, jfn) {
+  console.log("err" + e.message);
   jj.terminate();
-}).catchesAbove()
+});
 
 
 jj.on('end', function() {

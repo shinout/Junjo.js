@@ -34,11 +34,13 @@ function junjo_test() {
 
   var J = (node) ? require('../Junjo') : Junjo;
   var jj = new J();
-  var grep = spawn('grep', ['consolelog', __filename]);
+  var grep = spawn('grep', ['consolelog', "unkO"]);
 
   jj('1st', function() {
     this.shared.data = '';
+    this.shared.err  = '';
     this.emitOn(grep.stdout, 'data', '1stdata');
+    this.emitOn(grep.stderr, 'data', '1sterr');
   });
 
   jj.on('1stdata', function(data) {
@@ -46,8 +48,14 @@ function junjo_test() {
     jj.shared.data += data.toString();
   });
 
+  jj.on('1sterr', function(data) {
+    console.log(data.toString() + ' <-- GREPERROR\n');
+    jj.shared.err += data.toString();
+  });
+
   jj(function() {
-    console.log(this.shared.data + ' <==== FROM SHARED');
+    console.log(this.shared.data + ' <==== DATA');
+    console.log(this.shared.err  + ' <==== ERR');
     console.log("grepresult end");
   }).after('1st');
 
