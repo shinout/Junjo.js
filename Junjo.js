@@ -463,9 +463,12 @@ var Junjo = (function() {
   var jResetState = function() {
     variables[this.id] = {
       args         : [],                    // arguments passed to this.execute()
-      timeout_id   : null,                  // id of timeout checking function
       counter      : _(this).afters.length, // until 0, decremented per each call, then execution starts.
       emitters     : [],                    // event emitters
+      /* for saving memory, these properties are created only when it is needed.
+      timeout_id   : null,                  // id of timeout checking function
+      cb_attempted : null,                  // if callback is attempted to execute while "done" flag is false, passed args is set.
+      */
       called       : false,                 // execution started or not
       done         : false,                 // execution ended or not
       cb_accessed  : false,                 // whether callback is accessed via "this.callback", this means asynchronous.
@@ -508,7 +511,8 @@ var Junjo = (function() {
       if (isSync(this)) {
         _this.callback(ret);
       }
-      else { // checking if the callback is called in the function with in timeout[sec]
+      else {
+        if ($this.cb_attempted) return jSuccess.apply(this, $this.cb_attempted);
         if ($junjo.terminated || !_this.timeout) return;
 
         var self = this;
@@ -529,7 +533,7 @@ var Junjo = (function() {
   var isSync = function(jfn) { return (_(jfn).async === false || _(jfn).async === null && !$(jfn).cb_accessed) };
 
   var jFail = function(e) {
-    if (jFilter($(this))) return;
+    if ($(this).cb_called) return;
 
     var args =  _(this).catcher.call(this.junjo, e, this);
 
@@ -541,15 +545,13 @@ var Junjo = (function() {
     return jCallback.apply(this, args);
   };
 
-  var jFilter = function($this) {
-    return (!$this.done || $this.cb_called); // already-called-or-cannot-call filter
-  };
-
   var jSuccess = function() {
-    if (_(this).nodeCallback && !isSync(this) && arguments[0]) { // checking node-style callback error
+    var $this = $(this);
+    if ($this.cb_called) return;
+    if (!$this.done) return $this.cb_attempted = arguments;
+
+    if (_(this).nodeCallback && !isSync(this) && arguments[0])
       return jFail.call(this, arguments[0]);
-    }
-    if (jFilter($(this))) return;
 
     Array.prototype.unshift.call(arguments, true);
     return jCallback.apply(this, arguments);

@@ -2,6 +2,7 @@ var node = (typeof exports == 'object' && exports === this);
 
 // test start
 function junjo_test() {
+
   function asyncMethod(name, n, cb) {
     consolelog(name);
     setTimeout(function() {
@@ -32,6 +33,11 @@ function junjo_test() {
 
   var J = (node) ? require('../Junjo') : Junjo;
   var jj = new J();
+
+	jj.register = function() {
+		console.log("===== override register ======");
+		return J.prototype.register.apply(this, arguments);
+	}
 
   jj('labelseterr', function() {
     this.label('f');
@@ -107,9 +113,9 @@ function junjo_test() {
     asyncMethod(this.label(), 20, this.callback);
   }).after('1st', '2nd');
 
-  jj('6th', syncMethod).params(jj.label).after('4th'),
+  jj('6th', syncMethod).params(jj.label).after('4th');
 
-  jj('7th', asyncMethod).params(jj.label, 100, jj.callback).after(),
+  jj('7th', asyncMethod).params(jj.label, 100, jj.callback).after();
 
   jj.remove('del');
   console.log("--------- del test----------");
@@ -122,7 +128,8 @@ function junjo_test() {
 
 
   jj.async('8th', function() {
-    asyncMethod(this.label(), 35, this.callback);
+    syncMethod(this.label());
+    this.callback(null, this.label() + " but synchronous"); // calling synchronously
   }).after('5th');
 
   jj.sync('9th', syncMethod).params(jj.label).after('5th');
