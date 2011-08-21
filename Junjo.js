@@ -511,13 +511,13 @@ var Junjo = (function() {
         _this.callback(ret);
       }
       else { // checking if the callback is called in the function with in timeout[sec]
-        if ($junjo.terminated || _this.timeout) return;
+        if ($junjo.terminated || !_this.timeout) return;
 
         var self = this;
         $this.timeout_id = setTimeout(function() {
           if (!$this.cb_called) {
             $this.done = true;
-            jFail.call(self, new Error('callback wasn\'t called within '+ _time.timeout +' [sec] in function ' + self.label() + '.' ));
+            jFail.call(self, new Error('callback wasn\'t called within '+ _this.timeout +' [sec] in function ' + self.label() + '.' ));
           }
         }, _this.timeout * 1000);
       }
