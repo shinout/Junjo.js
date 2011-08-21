@@ -488,12 +488,9 @@ var Junjo = (function() {
       $this.args = args2arr(arguments);
     }
 
-    if (_this.params.length) {
-      _this.params.forEach(function(param, k) {
-        if (param instanceof KeyPath) _this.params[k] = param.get(this);
-      }, this);
-      $this.args = _this.params;
-    }
+    _this.params.forEach(function(param, k) {
+      $this.args[k] = (param instanceof KeyPath) ? param.get(this) : _this.params[k];
+    }, this);
 
     try {
       var ret = _this.func.apply(_this.scope || this, $this.args); // execution
