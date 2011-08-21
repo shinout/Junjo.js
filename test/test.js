@@ -70,7 +70,10 @@ function junjo_test() {
     return true;
   });
 
-  jj('1st', function() {
+  jj('1st', function(count) {
+    if (!count) count = 1;
+    console.log("--------------[COUNT : " + count + "]------------------");
+    this.out.count = ++count;
     asyncMethod(this.label(), 10, this.callback);
     this.shared.hoge = "HogeHoge";
   });
@@ -145,8 +148,9 @@ function junjo_test() {
 		return true;
   });
 
-  jj.on('end', function(e, r) {
-    consolelog("END", e, r);
+  jj.on('end', function(e, result) {
+    consolelog("END", e, result);
+    if (result.count < 3) jj.run(result.count);
   });
 
   jj.on('terminate', function(e, r) {

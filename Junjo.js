@@ -16,8 +16,8 @@ var Junjo = (function() {
   /** preparation for private properties **/
 
   var props = {}, variables = {}, current_id = 0;
-  function _(obj) { return props[obj.id] }        // unconfigurable properties after running
-  function $(obj) { return variables[obj.id] }    // configurable properties after running
+  function _(obj) { return props[obj.id] }        // configurable properties before running
+  function $(obj) { return variables[obj.id] }    // configurable properties after  running
   function D(obj) { delete props[obj.id], variables[obj.id]} // deletion
 
   /** constructor **/
@@ -43,17 +43,8 @@ var Junjo = (function() {
       timeout      : 5,     // timeout [sec]
       catcher      : null,  // default catcher
       nodeCallback : false, // use node-style callback or not
-      runnable     : true   // allowable to run or not
     };
-
-    variables[fJunjo.id] = {
-      running      : false, // running or not
-      results      : {},    // results of each functions
-      terminated   : false, // terminated or not
-      ended        : false, // emited end event or not
-      finished     : 0,     // the number of finished functions
-      current      : null   // pointer to current function
-    };
+    resetState.call(fJunjo);  // set variables
 
     // properties from options
     [ ['timeout'     , 'number'],
@@ -76,10 +67,9 @@ var Junjo = (function() {
 
   /** public properties, defined in Junjo.prototype **/
   Object.defineProperties(Junjo.prototype, {
-    current : {
-      get: function() { return $(this).current; },
-      set: empty
-    },
+    current  : { get : function () { return $(this).current }, set: empty },
+    runnable : { get : function () { return $(this).runnable && !$(this).running }, set : empty },
+    running  : { get : function () { return $(this).running }, set : empty },
 
     callback : {
       get: function() {
@@ -94,11 +84,6 @@ var Junjo = (function() {
         if (this.current) return _(this.current).label;
         return new KeyPath(['label'], '_');
       },
-      set : empty
-    },
-
-    runnable : {
-      get : function () { return _(this).runnable && !$(this).running },
       set : empty
     }
   });
@@ -125,14 +110,14 @@ var Junjo = (function() {
   // get result of each process.
   Junjo.prototype.results = function(lbl) {
     var $this = $(this);
-    if ($this.current) return (lbl == undefined) ? $this.results : $this.results[lbl];
+    if (this.running) return (lbl == undefined) ? $this.results : $this.results[lbl];
      
     return new KeyPath(args2arr(arguments), null, $this.results);
   };
 
   Junjo.prototype.args = function() {
     var $this = $(this);
-    if ($this.current) return $($this.current).args;
+    if ($this.running) return $($this.current).args;
 
     var arr = args2arr(arguments);
     arr.unshift('args');
@@ -209,36 +194,44 @@ var Junjo = (function() {
 
   // set another Junjo object which executes before this.
   Junjo.prototype.after = function(jn) {
-    var self = this;
+    var self = this, $this = $(this);
     jn.on('end', function(err, out) {
-      _(self).runnable = true;
+      $this.runnable = true;
       self.run(err, out);
     });
-    _(self).runnable = false;
+    $this.runnable = false;
     return this;
   };
 
    // run all the registered jfunc
   Junjo.prototype.run = function() {
-    var _this = _(this);
-    if (!this.runnable) return this; // checking _this.runnable && !_this.running
+    if ($(this).ended) resetState.call(this);
+    if (!this.runnable) return this; // checking $this.runnable && !$this.running
     $(this).running = true;
+    Object.freeze(_(this));
 
-    Object.freeze(_this);
-
-    var fncs = {}, args = arguments;
-
-    _this.jfncs.forEach(function(jfn) {
-      var _jfn = _(jfn);
-      $(jfn).counter = _jfn.afters.length;
-      Object.freeze(_jfn);
+    var args = arguments, jfuncs = _(this).jfncs;
+    jfuncs.forEach(function(jfn) { 
+      Object.freeze(_(jfn));
+      jResetState.call(jfn);
     });
-
-    _this.jfncs.forEach(function(jfn) { jExecute.apply(jfn, args) });
+    jfuncs.forEach(function(jfn) { jExecute.apply(jfn, args) });
     return this;
   };
 
   /** private functions **/
+
+  var resetState = function() {
+    variables[this.id] = {
+      runnable     : true,  // allowable to run or not
+      running      : false, // registered processes are running or not
+      results      : {},    // results of each functions
+      terminated   : false, // terminated or not
+      ended        : false, // emited end event or not
+      finished     : 0,     // the number of finished functions
+      current      : null   // pointer to current function
+    };
+  };
 
   var defaultCatcher = function(e, jfunc) {
     console.error(e.stack || e.message || e);
@@ -306,17 +299,6 @@ var Junjo = (function() {
       async        : null                    // asynchronous or not.
     };
 
-    variables[this.id] = {
-      args         : [],                     // arguments passed to this.execute()
-      timeout_id   : null,                   // id of timeout checking function
-      counter      : 0,                      // until 0, decremented per each call, then execution starts.
-      emitters     : [],                     // event emitters
-      called       : false,                  // execution started or not
-      done         : false,                  // execution ended or not
-      cb_accessed  : false,                  // whether callback is accessed via "this.callback", this means asynchronous.
-      cb_called    : false                   // whether callback is called or not.
-    };
-
     ['catcher', 'timeout', 'nodeCallback'].forEach(function(propname) {
       Object.defineProperty(this, propname, {
         get: function() {
@@ -378,37 +360,6 @@ var Junjo = (function() {
     return this;
   };
 
-  JFunc.prototype.emitOn = function(emitter, evtname, newname) {
-    var self = this;
-    emitter.on(evtname, function() {
-      Array.prototype.unshift.call(arguments, newname || evtname);
-      self.junjo.emit.apply(self.junjo, arguments);
-    });
-    this.emitEnd(emitter);
-    return self;
-  };
-
-  JFunc.prototype.emitEnd = function(emitter) {
-    var self = this, $this = $(this);
-    if ($this.emitters.indexOf(emitter) < 0) {
-      var cb = this.callback;
-      emitter.on('end', function(){
-        var n = $this.emitters.indexOf(emitter);
-        if (n < 0) return;
-        $this.emitters.splice(n, 1);
-        if ($this.emitters.length == 0) cb(); 
-      });
-      emitter[(typeof emitter.once == 'function') ? 'once' : 'on']('error', function(e) {
-        var n = $this.emitters.indexOf(emitter);
-        if (n < 0) return;
-        $this.emitters.splice(n, 1);
-        if ($this.emitters.length == 0) jFail.bind(self);
-      });
-      $this.emitters.push(emitter);
-    }
-    return this;
-  };
-
   JFunc.prototype.sync = function(bool) {
     _(this).async = (bool === undefined) ? false : !bool;
     return this;
@@ -420,7 +371,7 @@ var Junjo = (function() {
   };
 
   JFunc.prototype.after = function() {
-    if ($(this.junjo).running) throw new Error("Cannot call after() while during execution.");
+    if (this.junjo.running) throw new Error("Cannot call after() while during execution.");
     var _this = _(this), _junjo = _(this.junjo), lbl = _this.label;
     if (arguments.length == 0 && _junjo.labels[lbl] > 0)
       Array.prototype.push.call(arguments, _junjo.jfncs[_junjo.labels[lbl]-1].label());
@@ -436,21 +387,21 @@ var Junjo = (function() {
   };
 
   JFunc.prototype.afterAbove = function(bool) {
-    if ($(this.junjo).running) throw new Error("Cannot call afterAbove() while during execution.");
+    if (this.junjo.running) throw new Error("Cannot call afterAbove() while during execution.");
     return this.after.apply(this, _(this.junjo).jfncs.map(function(jfn) {
       return jfn.label();
     }));
   };
 
   JFunc.prototype.catches = function() {
-    if ($(this.junjo).running) throw new Error("Cannot call catches() while during execution.");
+    if (this.junjo.running) throw new Error("Cannot call catches() while during execution.");
     Array.prototype.push.call(arguments, _(this).func);
     this.junjo.remove(this.label()); // delete this object
     return this.junjo.catches.apply(this.junjo, arguments);
   };
 
   JFunc.prototype.catchesAbove = function() {
-    if ($(this.junjo).running) throw new Error("Cannot call catchesAbove() during execution.");
+    if (this.junjo.running) throw new Error("Cannot call catchesAbove() during execution.");
     var func  = _(this).func;
     this.junjo.remove(this.label()); // delete this object
     return this.junjo.catchesAbove.call(this.junjo, func);
@@ -476,7 +427,47 @@ var Junjo = (function() {
     }
   };
 
+  JFunc.prototype.emitOn = function(emitter, evtname, newname) {
+    if (!this.junjo.running) throw new Error("Cannot call emitOn() before execution.");
+    var self = this, $this = $(this);
+    emitter.on(evtname, function() {
+      Array.prototype.unshift.call(arguments, newname || evtname);
+      self.junjo.emit.apply(self.junjo, arguments);
+    });
+
+    if ($this.emitters.indexOf(emitter) < 0) {
+      var cb = this.callback;
+      emitter.on('end', function(){
+        var n = $this.emitters.indexOf(emitter);
+        if (n < 0) return;
+        $this.emitters.splice(n, 1);
+        if ($this.emitters.length == 0) cb(); 
+      });
+      emitter[(typeof emitter.once == 'function') ? 'once' : 'on']('error', function(e) {
+        var n = $this.emitters.indexOf(emitter);
+        if (n < 0) return;
+        $this.emitters.splice(n, 1);
+        if ($this.emitters.length == 0) jFail.bind(self);
+      });
+      $this.emitters.push(emitter);
+    }
+    return this;
+  };
+
   /** private functions of JFunc **/
+
+  var jResetState = function() {
+    variables[this.id] = {
+      args         : [],                    // arguments passed to this.execute()
+      timeout_id   : null,                  // id of timeout checking function
+      counter      : _(this).afters.length, // until 0, decremented per each call, then execution starts.
+      emitters     : [],                    // event emitters
+      called       : false,                 // execution started or not
+      done         : false,                 // execution ended or not
+      cb_accessed  : false,                 // whether callback is accessed via "this.callback", this means asynchronous.
+      cb_called    : false                  // whether callback is called or not.
+    };
+  }
 
   var jExecute = function() {
     var _this  = _(this), $this = $(this), _junjo = _(this.junjo), $junjo = $(this.junjo);
@@ -537,6 +528,7 @@ var Junjo = (function() {
   var isSync = function(jfn) { return (_(jfn).async === false || _(jfn).async === null && !$(jfn).cb_accessed) };
 
   var jFail = function(e) {
+    console.log(this.label());
     var _this = _(this), $this = $(this),  _junjo = _(this.junjo);
 
     if (jFilter($this)) return;
