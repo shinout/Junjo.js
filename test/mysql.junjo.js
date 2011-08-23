@@ -35,8 +35,8 @@ function junjo_test() {
   $j(function() {
     var num = Number(process.argv[2]);
     if (isNaN(num)) {
-      // $j.skip('select'); // future API
-      // $j.skip('word', process.argv[2] || DEFAULT_STR); // future API
+      $j.skip('select');
+      $j.skip('word', process.argv[2] || DEFAULT_STR);
       num = 1999;
     }
     this.shared.num = num;

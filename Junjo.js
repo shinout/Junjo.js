@@ -221,6 +221,13 @@ var Junjo = (function() {
     return this;
   };
 
+  // skip the process with a given label, and make it return the passed arguments
+  Junjo.prototype.skip = function() {
+    var lbl = A.shift.call(arguments), jfn = this.get(lbl), $jfn = $(jfn);
+    if ($jfn.called) return;
+    $(jfn).skipped = arguments;
+  };
+
    // run all the registered jfunc
   Junjo.prototype.run = function() {
     if ($(this).ended) resetState.call(this);
@@ -255,11 +262,11 @@ var Junjo = (function() {
     this.commons.shared = {};   // shared values within jfuncs
   };
 
-  var setResult = function(jfn, args_result, use_one) {
+  var setResult = function(jfn, result) {
     var _this = _(this), $this = $(this);
     $this.finished++;
 
-    $this.results[jfn.label()] = (use_one) ? args_result[0] : args_result;
+    $this.results[jfn.label()] = result;
 
     if ($this.finished == _this.jfncs.length && !$this.ended) {
       $this.ended = true;
@@ -476,6 +483,7 @@ var Junjo = (function() {
       /* for saving memory, these properties are created only when it is needed.
       timeout_id   : null,                  // id of timeout checking function
       cb_attempted : null,                  // if callback is attempted to execute while "done" flag is false, passed args is set.
+      skipped      : null,                  // if skipped, then passed args is set.
       */
       called       : false,                 // execution started or not
       done         : false,                 // execution ended or not
@@ -511,7 +519,9 @@ var Junjo = (function() {
     if (_this.params.length) $this.args = Junjo.args(_this.params, this);
 
     try {
-      var ret = _this.func.apply(_this.scope || this, $this.args); // execution
+      var ret = ($this.skipped != null)
+        ? $this.skipped
+        : _this.func.apply(_this.scope || this, $this.args); // execution
       $this.done = true;
       if (isSync(this)) {
         _this.callback(ret);
@@ -571,7 +581,7 @@ var Junjo = (function() {
     if ($this.timeout_id) clearTimeout($this.timeout_id); // remove tracing callback
 
     var succeeded = A.shift.call(arguments);
-    setResult.call(this.junjo, this, arguments, isSync(this));
+    setResult.call(this.junjo, this, ($this.skipped != null || isSync(this)) ? arguments[0] : arguments);
 
     if (succeeded) _this.callbacks.forEach(function(cb_jfn) { jExecute.apply(cb_jfn) });
   };
