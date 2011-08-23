@@ -34,6 +34,8 @@ var Junjo = (function() {
       Object.keys(Junjo.prototype).forEach(function(k) { fJunjo[k] = Junjo.prototype[k]; });
 
     Object.defineProperty(fJunjo, 'id', { value : ++current_id, writable : false});
+    Object.defineProperty(fJunjo, 'commons', {value : {err: null, out: {}, shared: {}}, writable : false});
+    Object.seal(fJunjo.commons);
 
     // private properties
     props[fJunjo.id] = {
@@ -45,12 +47,6 @@ var Junjo = (function() {
 
     // properties from options
     ['timeout', 'catcher', 'nodeCallback'].forEach(function(k) { fJunjo[k] = options[k] });
-
-    /** public properties **/
-    fJunjo.shared = {};   // shared values within jfuncs
-    fJunjo.err    = null; // error to pass to the "end" event
-    fJunjo.out    = {};   // final output to pass to the "end" event
-
     return fJunjo;
   };
 
@@ -121,6 +117,13 @@ var Junjo = (function() {
     return jfn;
   };
 
+  ['err', 'out', 'shared'].forEach(function(name) {
+    Junjo.prototype[name] = function() {
+      var kp = new KeyPath(args2arr(arguments), null, this.commons[name]);
+      return (this.running) ? kp.get() : kp;
+    };
+  });
+
   // get result of each process.
   Junjo.prototype.results = function(lbl) {
     var $this = $(this);
@@ -147,9 +150,9 @@ var Junjo = (function() {
   Junjo.prototype.emit = function() {
     var evtname   = Array.prototype.shift.call(arguments);
     var listeners = _(this).listeners[evtname] || [];
-    var self = this, args = arguments;
+    var args = arguments, commons = this.commons;
     listeners.forEach(function(listener) {
-      setTimeout(function() { listener.apply(self, args);}, 0);
+      setTimeout(function() { listener.apply(commons, args);}, 0);
     });
   };
 
@@ -243,8 +246,12 @@ var Junjo = (function() {
       terminated   : false, // terminated or not
       ended        : false, // emited end event or not
       finished     : 0,     // the number of finished functions
-      current      : null   // pointer to current function
+      current      : null,  // pointer to current function
     };
+    /** reset common properties **/
+    this.commons.err    = null; // error to pass to the "end" event
+    this.commons.out    = {};   // final output to pass to the "end" event
+    this.commons.shared = {};   // shared values within jfuncs
   };
 
   var setResult = function(jfn, args_result, use_one) {
@@ -255,7 +262,7 @@ var Junjo = (function() {
 
     if ($this.finished == _this.jfncs.length && !$this.ended) {
       $this.ended = true;
-      this.emit('end', this.err, this.out);
+      this.emit('end', this.commons.err, this.commons.out);
     }
 
     if ($this.terminated) {
@@ -265,10 +272,10 @@ var Junjo = (function() {
       });
       if (!bool) return;
 
-      this.emit('terminate', this.err, this.out);
+      this.emit('terminate', this.commons.err, this.commons.out);
       if (!$this.ended) {
         $this.ended = true;
-        this.emit('end', this.err, this.out);
+        this.emit('end', this.commons.err, this.commons.out);
       }
     }
   };
@@ -315,7 +322,7 @@ var Junjo = (function() {
 
     // public properties
     Object.defineProperties(this, {
-      junjo : {value: junjo, writable: false },
+      junjo  : { value : junjo, writable: false },
 
       callback : {
         get : function() {
@@ -324,14 +331,14 @@ var Junjo = (function() {
         },
         set : empty,
         enumerable: true
-      }
+      },
     });
 
     // proxy to properties in Junjo, for enumerablity, not set to JFunc.prototype.
     ['shared', 'err', 'out'].forEach(function(propname) {
       Object.defineProperty(this, propname, {
-        get : function()  { return this.junjo[propname] },
-        set : function(v) { this.junjo[propname] = v },
+        get : function()  { return this.junjo.commons[propname] },
+        set : function(v) { this.junjo.commons[propname] = v },
         enumerable: true
       });
     }, this);
@@ -535,7 +542,8 @@ var Junjo = (function() {
   var jFail = function(e) {
     if ($(this).cb_called) return;
 
-    var args =  _(this).catcher.call(this.junjo, e, this);
+    var args = _(this).catcher.call(this.junjo.commons, e, this);
+
 
     if (! (args instanceof Array)) 
       args = (args) ? [true, args] : [false];

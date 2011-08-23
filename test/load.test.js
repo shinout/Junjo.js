@@ -2,7 +2,6 @@ var node = (typeof exports == 'object' && exports === this);
 
 function asyncMethod(name, n, cb) {
   consolelog(name);
-  console.log(cb.toString());
   setTimeout(function() {
     consolelog('\t' + name + ' + ' + n + ' [sec]');
     cb(null, name);

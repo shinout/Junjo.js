@@ -58,9 +58,9 @@ function junjo_test() {
   jj('2nd', function() {
     console.log(jj.current);
     asyncMethod(jj.current.label(), 20, jj.current.callback);
-    console.log(jj.current.shared.hoge);
+    console.log("commons", jj.commons.shared.hoge);
     console.log(this.hoge);
-    jj.current.shared.abc = "ABC";
+    jj.commons.shared.abc = "ABC";
   }).scope({hoge: 'FugaFuga'});
 
   jj.async('3rd', function() {

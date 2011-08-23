@@ -18,17 +18,18 @@ function junjo_test() {
 
   jj.on('1stdata', function(data) {
     console.log(data.toString() + ' <-- GREPRESULT\n');
-    jj.shared.data += data.toString();
+    this.shared.data += data.toString();
   });
 
   jj.on('1sterr', function(data) {
     console.log(data.toString() + ' <-- GREPERROR\n');
-    jj.shared.err += data.toString();
+    this.shared.err += data.toString();
   });
 
   jj(function() {
     console.log(this.shared.data + ' <==== DATA');
     console.log(this.shared.err  + ' <==== ERR');
+    console.log(jj.shared('err')  + ' <==== ERR (shared func)');
     console.log("grepresult end");
   }).after('1st');
 
