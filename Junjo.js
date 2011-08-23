@@ -1,12 +1,13 @@
 var Junjo = (function() {
   "use strict";
 
-  /** utility functions **/
+  /** utility functions, variables **/
+  var A = Array.prototype;
 
   var empty = function() {};
 
   var args2arr = function(args) {
-    return Array.prototype.map.call(args, function(v) {return v;});
+    return A.map.call(args, function(v) {return v;});
   };
 
   var is_arguments = function(v) {
@@ -107,7 +108,7 @@ var Junjo = (function() {
 
   // register a function
   Junjo.prototype.register = function() {
-    var label = (typeof arguments[0] != 'function') ? Array.prototype.shift.call(arguments) : undefined;
+    var label = (typeof arguments[0] != 'function') ? A.shift.call(arguments) : undefined;
     var jfn   = new JFunc(arguments[0], this);
     var _this = _(this);
     var num   = _this.jfncs.push(jfn) -1;
@@ -148,7 +149,7 @@ var Junjo = (function() {
 
   // emitting event asynchronously. The similar way as EventEmitter in Node.js
   Junjo.prototype.emit = function() {
-    var evtname   = Array.prototype.shift.call(arguments);
+    var evtname   = A.shift.call(arguments);
     var listeners = _(this).listeners[evtname] || [];
     var args = arguments, commons = this.commons;
     listeners.forEach(function(listener) {
@@ -183,13 +184,13 @@ var Junjo = (function() {
 
   // add catcher
   Junjo.prototype.catches = function() {
-    var fn = Array.prototype.pop.call(arguments);
+    var fn = A.pop.call(arguments);
     var _this = _(this);
     if (!arguments.length) {
       if (_this.jfncs.length) _(_this.jfncs[_this.jfncs.length-1]).catcher = fn;
     }
     else {
-      Array.prototype.forEach.call(arguments, function(lbl) {
+      A.forEach.call(arguments, function(lbl) {
         var jfunc = this.get(lbl);
         if (jfunc) _(jfunc).catcher = fn;
       }, this);
@@ -360,12 +361,12 @@ var Junjo = (function() {
   };
 
   JFunc.prototype.bind = function() {
-    this.scope(Array.prototype.shift.call(arguments));
+    this.scope(A.shift.call(arguments));
     return this.params.apply(this, arguments);
   };
 
   JFunc.prototype.params = function() {
-    Array.prototype.forEach.call(arguments, function(v) {
+    A.forEach.call(arguments, function(v) {
       this.params.push(v);
     }, _(this));
     return this;
@@ -385,9 +386,9 @@ var Junjo = (function() {
     if (this.junjo.running) throw new Error("Cannot call after() while during execution.");
     var _this = _(this), _junjo = _(this.junjo), lbl = _this.label;
     if (arguments.length == 0 && _junjo.labels[lbl] > 0)
-      Array.prototype.push.call(arguments, _junjo.jfncs[_junjo.labels[lbl]-1].label());
+      A.push.call(arguments, _junjo.jfncs[_junjo.labels[lbl]-1].label());
 
-    Array.prototype.forEach.call(arguments, function(lbl) {
+    A.forEach.call(arguments, function(lbl) {
       var before = _junjo.jfncs[_junjo.labels[lbl]];
       if (!before || before === this || _this.afters.indexOf(lbl) >= 0) return;
       _this.afters.push(lbl);
@@ -406,7 +407,7 @@ var Junjo = (function() {
 
   JFunc.prototype.catches = function() {
     if (this.junjo.running) throw new Error("Cannot call catches() while during execution.");
-    Array.prototype.push.call(arguments, _(this).func);
+    A.push.call(arguments, _(this).func);
     this.junjo.remove(this.label()); // delete this object
     return this.junjo.catches.apply(this.junjo, arguments);
   };
@@ -442,7 +443,7 @@ var Junjo = (function() {
     if (!this.junjo.running) throw new Error("Cannot call emitOn() before execution.");
     var self = this, $this = $(this);
     emitter.on(evtname, function() {
-      Array.prototype.unshift.call(arguments, newname || evtname);
+      A.unshift.call(arguments, newname || evtname);
       self.junjo.emit.apply(self.junjo, arguments);
     });
 
@@ -497,7 +498,7 @@ var Junjo = (function() {
       $this.args = _this.afters.reduce(function(arr, lbl) {
         var val = $junjo.results[lbl];
         if (is_arguments(val))
-          Array.prototype.forEach.call(val, function(v) { arr.push(v) });
+          A.forEach.call(val, function(v) { arr.push(v) });
         else
           arr.push(val);
 
@@ -507,10 +508,7 @@ var Junjo = (function() {
     else {
       $this.args = args2arr(arguments);
     }
-
-    _this.params.forEach(function(param, k) {
-      $this.args[k] = (param instanceof KeyPath) ? param.get(this) : _this.params[k];
-    }, this);
+    if (_this.params.length) $this.args = Junjo.args(_this.params, this);
 
     try {
       var ret = _this.func.apply(_this.scope || this, $this.args); // execution
@@ -561,7 +559,7 @@ var Junjo = (function() {
     if (_(this).nodeCallback && !isSync(this) && arguments[0])
       return jFail.call(this, arguments[0]);
 
-    Array.prototype.unshift.call(arguments, true);
+    A.unshift.call(arguments, true);
     return jCallback.apply(this, arguments);
   };
 
@@ -572,10 +570,15 @@ var Junjo = (function() {
 
     if ($this.timeout_id) clearTimeout($this.timeout_id); // remove tracing callback
 
-    var succeeded = Array.prototype.shift.call(arguments);
+    var succeeded = A.shift.call(arguments);
     setResult.call(this.junjo, this, arguments, isSync(this));
 
     if (succeeded) _this.callbacks.forEach(function(cb_jfn) { jExecute.apply(cb_jfn) });
+  };
+
+  /** static functions **/
+  Junjo.args = function(args, obj) {
+    return A.map.call(args, function(v) { return (v instanceof KeyPath) ? v.get(obj) : v });
   };
 
   Object.freeze(Junjo);

@@ -22,7 +22,7 @@ function junjo_test() {
     var sql  = Array.prototype.shift.call(arguments);
     var args = arguments;
     return $j(function() {
-      // Junjo.args(args).forEach(function(v) { sql = sql.replace('%s', v) }); // future API
+      Junjo.args(args).forEach(function(v) { sql = sql.replace('%s', v) });
       console.log(sql);
       client.query(sql, this.callback);
     });
@@ -42,11 +42,7 @@ function junjo_test() {
     this.shared.num = num;
   });
 
-  // $query('select * from ' + TBL_NAME + ' limit %s,1', $j.shared('num')).label('select');// future API
-
-  $j('select', function() {
-    client.query('select * from ' + TBL_NAME + ' limit '+ this.shared.num +',1', this.callback);
-  });
+  $query('select * from ' + TBL_NAME + ' limit %s,1', $j.shared('num')).label('select');
 
   $result(function(err, records, fields) {
     if (!records[0]) throw new Error();
