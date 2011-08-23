@@ -1,59 +1,82 @@
-var mysql  = require('mysql');
-var data   = require('./data');
-var client = mysql.createClient({
-  user     : data.user,
-  password : data.password,
-});
+if (typeof global != 'undefined') require('./load.test').load(global);
+if (node) junjo_test();
 
-var Junjo = require('../Junjo');
+function junjo_test() {
+  if (!node) return;
 
-var DB_NAME  = data.dbname;
-var TBL_NAME = data.tblname;
+  var mysql  = require('mysql');
+  var data   = require('./data');
+  var client = mysql.createClient({
+    user     : data.user,
+    password : data.password,
+  });
 
-var jj = new Junjo({ nodeCallback: true });
+  var DB_NAME     = data.dbname;
+  var TBL_NAME    = data.tblname;
+  var COL_NAME    = data.colname;
+  var DEFAULT_STR = data.default_str || 'MDS';
 
-jj(function() {
-  var num = Number(process.argv[2]);
-  if (isNaN(num)) num = 400;
-  this.shared.num = num;
-});
+  var $j = new Junjo({ nodeCallback: true });
 
-jj(client.query).bind(client, 'use ' + DB_NAME, jj.callback);
-
-jj(function() {
-  client.query('select * from ' + TBL_NAME + ' limit '+ this.shared.num + ',1', jj.callback)
-}).label('select');
-
-jj(function(err, records, f) {
-  var col = Object.keys(records[0])[1];
-  return [col, records[0][col]];
-}).after();
-
-jj(function(arr) {
-  var col = arr[0], val = arr[1];
-
-  var word = val.split(/[をがのはやで、。]/)[0];
-  console.log("searching " + word);
-  client.query('select * from ' + TBL_NAME + ' where ' + col + ' like "%'+ word +'%" limit 5', this.callback);
-}).after();
+  function $query() {
+    var sql  = Array.prototype.shift.call(arguments);
+    var args = arguments;
+    return $j(function() {
+      // Junjo.args(args).forEach(function(v) { sql = sql.replace('%s', v) }); // future API
+      console.log(sql);
+      client.query(sql, this.callback);
+    });
+  }
+  function $result(fn) { return $j(fn).after() }
 
 
-jj(function(e, records, f) {
-  console.log(records);
-}).after();
+  $query('use ' + DB_NAME);
+
+  $j(function() {
+    var num = Number(process.argv[2]);
+    if (isNaN(num)) {
+      // $j.skip('select'); // future API
+      // $j.skip('word', process.argv[2] || DEFAULT_STR); // future API
+      num = 1999;
+    }
+    this.shared.num = num;
+  });
+
+  // $query('select * from ' + TBL_NAME + ' limit %s,1', $j.shared('num')).label('select');// future API
+
+  $j('select', function() {
+    client.query('select * from ' + TBL_NAME + ' limit '+ this.shared.num +',1', this.callback);
+  });
+
+  $result(function(err, records, fields) {
+    if (!records[0]) throw new Error();
+    return records[0][COL_NAME];
+  }).label('word');
+
+  $j.catches(function() { return DEFAULT_STR });
+
+  $result(function(word) {
+    var word = word.split(/[をがのはやで、。]/)[0];
+    console.log("searching " + word);
+    client.query('select * from ' + TBL_NAME + ' where ' + COL_NAME + ' like "%'+ word +'%" limit 5', this.callback);
+  });
+
+  $result(function(e, records, f) {
+    console.log(records);
+  });
+
+  // catcher
+  $j.catchesAbove(function(e, jfn) {
+    console.log(e.stack);
+    console.log("from : " + jfn.label());
+    $j.terminate();
+  });
 
 
-// catcher
-jj.catchesAbove(function(e, jfn) {
-  console.log("err: " + e.message);
-  console.log("from : " + jfn.label());
-  jj.terminate();
-});
+  $j.on('end', function() {
+    console.log("end");
+    client.end();
+  });
 
-
-jj.on('end', function() {
-  console.log("end");
-  client.end();
-});
-
-jj.run();
+  $j.run();
+}

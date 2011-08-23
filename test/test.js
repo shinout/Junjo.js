@@ -1,42 +1,13 @@
-var node = (typeof exports == 'object' && exports === this);
+if (typeof global != 'undefined') require('./load.test').load(global);
+if (node) junjo_test();
 
-// test start
 function junjo_test() {
 
-  function asyncMethod(name, n, cb) {
-    consolelog(name);
-    setTimeout(function() {
-      consolelog('\t' + name + ' + ' + n + ' [sec]');
-      cb(null, name);
-    }, n);
-  }
-
-  function syncMethod(name) {
-    consolelog(name);
-    consolelog('\t' + name + ' (sync)');
-    return name + ' (sync)';
-  }
- 
-  function consolelog() {
-    if (node) {
-      console.log.apply(this, arguments);
-    }
-    else {
-      Array.prototype.forEach.call(arguments, function(v) {
-        console.log(v);
-        var el = document.createElement('li');
-        el.innerHTML = v.toString();
-        document.getElementById('test').appendChild(el);
-      });
-    }
-  }
-
-  var J = (node) ? require('../Junjo') : Junjo;
-  var jj = new J();
+  var jj = new Junjo();
 
 	jj.register = function() {
 		console.log("===== override register ======");
-		return J.prototype.register.apply(this, arguments);
+		return Junjo.prototype.register.apply(this, arguments);
 	}
 
   jj('labelseterr', function() {
@@ -167,4 +138,3 @@ function junjo_test() {
   jj.run();
 }
 
-if (node) { junjo_test();}

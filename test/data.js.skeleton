@@ -3,4 +3,5 @@ module.exports =
 ,  password : ''
 , dbname : 'test_db'
 , tblname : 'test_table'
+, colname : 'test_column'
 };

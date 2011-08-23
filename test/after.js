@@ -1,37 +1,10 @@
-var node = (typeof exports == 'object' && exports === this);
+if (typeof global != 'undefined') require('./load.test').load(global);
+if (node) junjo_test();
 
 // test start
 function junjo_test() {
-  function asyncMethod(name, n, cb) {
-    consolelog(name);
-    setTimeout(function() {
-      consolelog('\t' + name + ' + ' + n + ' [sec]');
-      cb(null, name);
-    }, n);
-  }
 
-  function syncMethod(name) {
-    consolelog(name);
-    consolelog('\t' + name + ' (sync)');
-    return name + ' (sync)';
-  }
- 
-  function consolelog() {
-    if (node) {
-      console.log.apply(this, arguments);
-    }
-    else {
-      Array.prototype.forEach.call(arguments, function(v) {
-        console.log(v);
-        var el = document.createElement('li');
-        el.innerHTML = v.toString();
-        document.getElementById('test').appendChild(el);
-      });
-    }
-  }
-
-  var J = (node) ? require('../Junjo') : Junjo;
-  var j1 = new J();
+  var j1 = new Junjo();
 
   j1('1st', function() {
     asyncMethod(this.label(), 10, this.callback);
@@ -42,7 +15,7 @@ function junjo_test() {
     this.out = 'val=' + val + '&hoge=' + this.shared.hoge + '&val2=' + this.label();
   }).after();
 
-  var j2 = new J().after(j1);
+  var j2 = new Junjo().after(j1);
   
   j2('3rd', function(err, val) {
     return val + ' (from j1), ' + this.label();
@@ -58,5 +31,3 @@ function junjo_test() {
 
   j1.run(); // j2 runs too.
 }
-
-if (node) { junjo_test();}
