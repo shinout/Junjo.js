@@ -71,7 +71,7 @@ var Junjo = (function() {
       value : function(e, jfunc) {
         console.error(e.stack || e.message || e);
         this.err = e;
-        this.terminate();
+        jfunc.junjo.terminate();
         return false;
       },
       writable : false
