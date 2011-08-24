@@ -2,5 +2,5 @@ Junjo.js
 ==========
 
 ### see ###
-see [Here](http://umecob.net/junjo.html "Junjo.js"). 
+see [examples](https://github.com/shinout/Junjo.js/tree/master/examples "examples"). 
 
