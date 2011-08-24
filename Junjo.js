@@ -419,6 +419,12 @@ var Junjo = (function() {
     return this.junjo.catches.apply(this.junjo, arguments);
   };
 
+  // JSDeferred-like API
+  JFunc.prototype.fail = function(fn) { _(this).catcher = fn; return this };
+  JFunc.prototype.next = function() {
+    return this.junjo.register.apply(this.junjo, arguments).after(this.label());
+  };
+
   JFunc.prototype.catchesAbove = function() {
     if (this.junjo.running) throw new Error("Cannot call catchesAbove() during execution.");
     var func  = _(this).func;
@@ -480,11 +486,6 @@ var Junjo = (function() {
       args         : [],                    // arguments passed to this.execute()
       counter      : _(this).afters.length, // until 0, decremented per each call, then execution starts.
       emitters     : [],                    // event emitters
-      /* for saving memory, these properties are created only when it is needed.
-      timeout_id   : null,                  // id of timeout checking function
-      cb_attempted : null,                  // if callback is attempted to execute while "done" flag is false, passed args is set.
-      skipped      : null,                  // if skipped, then passed args is set.
-      */
       called       : false,                 // execution started or not
       done         : false,                 // execution ended or not
       cb_accessed  : false,                 // whether callback is accessed via "this.callback", this means asynchronous.

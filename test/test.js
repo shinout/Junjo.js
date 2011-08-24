@@ -24,6 +24,11 @@ function junjo_test() {
 
   jj('scoperr', function() {
     this.scope({});
+
+  }).fail(function(e, jfn) {
+    console.log("fail test");
+    console.log(jfn.label() + " occurred an error -> " + e.message);
+    return true;
   });
 
   jj('catcheserr', function() {
@@ -105,8 +110,11 @@ function junjo_test() {
 
   jj.sync('9th', syncMethod).params(jj.label).after('5th');
 
-  jj.sync('10th', syncMethod).params(jj.args(0)).after('9th');
-  jj.sync('11th', syncMethod).params(jj.results('10th')).after('9th');
+  jj.sync(syncMethod).params(jj.args(0)).after('9th');
+  jj.sync(syncMethod).params(jj.results('9th')).after('9th')
+  .next('10th', function() {
+    return syncMethod(this.label() + " using next()");
+  });
 
   jj('last', function() {
     var args = Array.prototype.map.call(arguments, function(v) {

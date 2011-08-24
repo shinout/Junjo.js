@@ -27,7 +27,7 @@ function junjo_test() {
 
   $j.getResult = function(jfn) {
     var result = $j.results(jfn.label(), 1);
-    return function() {
+    var ret = function() {
       var args = arguments;
       var next_jfn = $j(function() {
         showTime();
@@ -38,9 +38,10 @@ function junjo_test() {
       }).after(jfn.label());
       return $j.getResult(next_jfn);
     };
+    ret.next = function() { jfn.next.apply(jfn, arguments) };
+    return ret;
   };
 
-  var $result = function(fn) { return $j(fn).after() };
   var $open = function() { return $j.getResult($j(client.open).bind(client, $j.callback)) };
 
   /****** START *********/
@@ -52,16 +53,14 @@ function junjo_test() {
 
   for (var i=0; i<3; i++) $coll('insert', {a : i});
 
-  $coll('count');
-
-  $result(function(err, count) {
+  $coll('count')
+  .next(function(err, count) {
     showTime();
     console.log("There are " + count + " records in the test collection. Here they are:");
   });
 
-  $coll('find');
-
-  $result(function(err, cursor) {
+  $coll('find')
+  .next(function(err, cursor) {
     showTime();
     cursor.each(function(err, item) {
       if(item != null) {
