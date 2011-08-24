@@ -11,12 +11,12 @@ function junjo_test() {
   var N = 0; console.time(N);
   function showTime() { console.timeEnd(N); console.time(++N); }
 
-  var host = process.env['MONGO_NODE_DRIVER_HOST'] != null ? process.env['MONGO_NODE_DRIVER_HOST'] : 'localhost';
-  var port = process.env['MONGO_NODE_DRIVER_PORT'] != null ? process.env['MONGO_NODE_DRIVER_PORT'] : Connection.DEFAULT_PORT;
+  var host = 'localhost';
+  var port = Connection.DEFAULT_PORT;
   var client = new DB('node-mongo-examples', new Server(host, port, {}), {});
   console.log("connecting to " + host);
 
-  var j = new Junjo({
+  var $j = new Junjo({
     nodeCallback : true,
     timeout      : 3,
     catcher      : function(e, jfn) {
@@ -25,44 +25,43 @@ function junjo_test() {
     }
   });
 
-  j.getKPF = function(jfn) {
-    var resultKP = j.results(jfn.label(), 1);
+  $j.getResult = function(jfn) {
+    var result = $j.results(jfn.label(), 1);
     return function() {
       var args = arguments;
-      var next_jfn = j(function() {
+      var next_jfn = $j(function() {
         showTime();
-        var obj   = resultKP.get();
+        var obj   = result.get();
         var fname = Array.prototype.shift.call(args);
         Array.prototype.push.call(args, this.callback);
         obj[fname].apply(obj, args);
       }).after(jfn.label());
-      return j.getKPF(next_jfn);
+      return $j.getResult(next_jfn);
     };
   };
 
-
-  var open = function() { return j.getKPF(j(client.open).bind(client, j.callback)) };
-
+  var $result = function(fn) { return $j(fn).after() };
+  var $open = function() { return $j.getResult($j(client.open).bind(client, $j.callback)) };
 
   /****** START *********/
-  var conn = open();
-  conn('dropDatabase');
+  var $conn = $open();
+  $conn('dropDatabase');
 
-  var coll = conn('collection', 'test');
-  coll('remove', {});
+  var $coll = $conn('collection', 'test');
+  $coll('remove', {});
 
-  for (var i=0; i<3; i++) coll('insert', {a : i});
+  for (var i=0; i<3; i++) $coll('insert', {a : i});
 
-  coll('count');
+  $coll('count');
 
-  j(function(err, count) {
+  $result(function(err, count) {
     showTime();
     console.log("There are " + count + " records in the test collection. Here they are:");
-  }).after();
+  });
 
-  coll('find');
+  $coll('find');
 
-  j(function(err, cursor) {
+  $result(function(err, cursor) {
     showTime();
     cursor.each(function(err, item) {
       if(item != null) {
@@ -71,11 +70,11 @@ function junjo_test() {
         console.log("created at " + new Date(item._id.generationTime) + "\n")
       }
     });
-  }).after();
+  });
 
-  j.on('end', function() {
+  $j.on('end', function() {
     client.close();
   });
 
-  j.run();
+  $j.run();
 }
