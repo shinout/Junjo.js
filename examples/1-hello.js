@@ -27,7 +27,7 @@ world
 **/
 
 /** description(en)
-1. Do $j = new Junjo() . Any variable name is ok, other than "$j".
+1. Do $j = new Junjo() . Of course, any variable name is ok.
 
 2. $j is a function.  $j(func) registeres a function named func.
 
@@ -39,7 +39,7 @@ world
 
 /** description(ja)
 
-1. $j = new Junjo() します。 $jは何でもいいですが分かりやすく。
+1. $j = new Junjo() します。 変数名$jはもちろん何でも構いません。
 
 2. $j は関数です。 $j(func) でfuncという関数を登録します。
 
