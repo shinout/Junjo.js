@@ -309,41 +309,36 @@ var Junjo = (function() {
   /** private class $Fn **/
   var $Fn = function(fn, junjo) {
     Object.defineProperty(this, 'id', { value : ++current_id, writable : false});
+    Object.defineProperty(this, 'junjo',{ value : junjo, writable: false });
 
     // private properties
     props[this.id] = {
       func         : fn,                  // registered function
-      callback     : jSuccess.bind(this), // callback function
       label        : null,                // label
       callbacks    : [],                  // callback functions called in jCallback
       afters       : [],                  // labels of functions executed before this function
       params       : [],                  // parameters to be given to the function. if empty, original callback arguments is used.
       async        : null                 // asynchronous or not.
     };
-
-    // public properties
-    Object.defineProperties(this, {
-      junjo  : { value : junjo, writable: false },
-
-      callback : {
-        get : function() {
-          $(this).cb_accessed = true;
-          return _(this).callback;
-        },
-        set : empty,
-        enumerable: true
-      },
-    });
-
-    // proxy to properties in Junjo, for enumerablity, not set to $Fn.prototype.
-    ['shared', 'err', 'out'].forEach(function(propname) {
-      Object.defineProperty(this, propname, {
-        get : function()  { return this.junjo.commons[propname] },
-        set : function(v) { this.junjo.commons[propname] = v },
-        enumerable: true
-      });
-    }, this);
   };
+
+  // proxy to properties in Junjo, for enumerablity, not set to $Fn.prototype.
+  ['shared', 'err', 'out'].forEach(function(propname) {
+    Object.defineProperty($Fn.prototype, propname, {
+      get : function()  { return this.junjo.commons[propname] },
+      set : function(v) { this.junjo.commons[propname] = v },
+      enumerable: true
+    });
+  });
+
+  // public properties
+  Object.defineProperty($Fn.prototype, 'callback', {
+    get : function() {
+      $(this).cb_accessed = true;
+      return jSuccess.bind(this);
+    },
+    set : empty
+  });
 
   $Fn.prototype.scope = function(scope) {
     if (scope != null && typeof scope == 'object') _(this).scope = scope;
@@ -518,7 +513,7 @@ var Junjo = (function() {
         : _this.func.apply(_this.scope || this, $this.args); // execution
       $this.done = true;
       if (isSync(this)) {
-        _this.callback(ret);
+        return jSuccess.call(this, ret);
       }
       else {
         if ($this.cb_attempted) return jSuccess.apply(this, $this.cb_attempted);
@@ -535,7 +530,7 @@ var Junjo = (function() {
     }
     catch (e) {
       $this.done = true;
-      jFail.call(this, e);
+      return jFail.call(this, e);
     }
   };
 
