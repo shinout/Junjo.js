@@ -201,7 +201,7 @@ var Junjo = (function() {
   // add catcher to all the functions registered previously, except those already have a catcher.
   Junjo.prototype.catchesAbove = function(fn) {
     _(this).$fns.forEach(function($fn) {
-      if (!_($fn)._catcher) _($fn).catcher = fn;
+      if (!_($fn).catcher) _($fn).catcher = fn;
     });
     return this;
   };
@@ -320,13 +320,6 @@ var Junjo = (function() {
       params       : [],                  // parameters to be given to the function. if empty, original callback arguments is used.
       async        : null                 // asynchronous or not.
     };
-
-    ['catcher', 'timeout', 'nodeCallback'].forEach(function(k) {
-      Object.defineProperty(this, k, {
-        get: function()  { return (this['_' + k] != null) ? this['_' + k] : junjo[k] },
-        set: function(v) { this['_' + k] = v }
-      });
-    }, _(this));
 
     // public properties
     Object.defineProperties(this, {
@@ -529,7 +522,7 @@ var Junjo = (function() {
       }
       else {
         if ($this.cb_attempted) return jSuccess.apply(this, $this.cb_attempted);
-        if ($junjo.terminated || !_this.timeout) return;
+        if ($junjo.terminated || !jInheritValue.call(this, 'timeout')) return;
 
         var self = this;
         $this.timeout_id = setTimeout(function() {
@@ -551,8 +544,7 @@ var Junjo = (function() {
   var jFail = function(e) {
     if ($(this).cb_called) return;
 
-    var args = _(this).catcher.call(this.junjo.commons, e, this);
-
+    var args = jInheritValue.call(this, 'catcher').call(this.junjo.commons, e, this);
 
     if (! (args instanceof Array)) 
       args = (args) ? [true, args] : [false];
@@ -562,12 +554,17 @@ var Junjo = (function() {
     return jCallback.apply(this, args);
   };
 
+  var jInheritValue = function(keyname) {
+    var v = _(this)[keyname];
+    return (v == null) ? this.junjo[keyname] : v;
+  };
+
   var jSuccess = function() {
     var $this = $(this);
     if ($this.cb_called) return;
     if (!$this.done) return $this.cb_attempted = arguments;
 
-    if (_(this).nodeCallback && !isSync(this) && arguments[0])
+    if (jInheritValue.call(this, 'nodeCallback') && !isSync(this) && arguments[0])
       return jFail.call(this, arguments[0]);
 
     A.unshift.call(arguments, true);
