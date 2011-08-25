@@ -1,6 +1,6 @@
 /** //
-* en : if not running with Node.js, comment out this line.
-* ja : Node.jsで実行しない場合、この行はコメントアウトして下さい.
+* en : When running in browsers, comment out this line.
+* ja : ブラウザで実行する場合、この行はコメントアウトして下さい.
 **/
 var Junjo = require('../Junjo');
 

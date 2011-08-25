@@ -1,3 +1,9 @@
+/** //
+* en : When running in browsers, comment out this line.
+* ja : ブラウザで実行する場合、この行はコメントアウトして下さい.
+**/
+var Junjo = require('../Junjo');
+
 /** ** 
 * en : (an asynchronous function which execute a callback function after the whole process.
 * ja : 処理完了後にcallbackを実行する非同期な関数 
@@ -6,11 +12,6 @@ function asyncFunc(v, callback) {
   setTimeout(function() { callback(v + '(async)', 'arg2') }, 10);
 }
 
-/** //
-* en : if not running with Node.js, comment out this line.
-* ja : Node.jsで実行しない場合、この行はコメントアウトして下さい.
-**/
-var Junjo = require('../Junjo');
 var $j = new Junjo();
 
 
