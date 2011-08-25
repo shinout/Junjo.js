@@ -314,11 +314,9 @@ var Junjo = (function() {
     // private properties
     props[this.id] = {
       func         : fn,                  // registered function
-      label        : null,                // label
       callbacks    : [],                  // callback functions called in jCallback
       afters       : [],                  // labels of functions executed before this function
-      params       : [],                  // parameters to be given to the function. if empty, original callback arguments is used.
-      async        : null                 // asynchronous or not.
+      params       : []                   // parameters to be given to the function. if empty, original callback arguments is used.
     };
   };
 
@@ -534,7 +532,7 @@ var Junjo = (function() {
     }
   };
 
-  var isSync = function($fn) { return (_($fn).async === false || _($fn).async === null && !$($fn).cb_accessed) };
+  var isSync = function($fn) { return (_($fn).async === false || _($fn).async == null && !$($fn).cb_accessed) };
 
   var jFail = function(e) {
     if ($(this).cb_called) return;
