@@ -10,6 +10,10 @@ var Junjo = (function() {
     return A.map.call(args, function(v) {return v;});
   };
 
+  var nextTick = (typeof process == 'object' && typeof process.nextTick == 'function')
+    ? process.nextTick 
+    : function(fn) { setTimeout(fn, 0) };
+
   var is_arguments = function(v) {
     return typeof v == 'object' && v.toString() == '[object Arguments]'; // FIXME there would be more elegant ways...
   };
@@ -153,7 +157,7 @@ var Junjo = (function() {
     var listeners = _(this).listeners[evtname] || [];
     var args = arguments, commons = this.commons;
     listeners.forEach(function(listener) {
-      setTimeout(function() { listener.apply(commons, args);}, 0);
+      nextTick(function() { listener.apply(commons, args) });
     });
   };
 
