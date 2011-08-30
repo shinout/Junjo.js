@@ -586,7 +586,7 @@ var Junjo = (function() {
     return A.map.call(args, function(v) { return (v instanceof KeyPath) ? v.get(obj) : v });
   };
 
-  Object.freeze(Junjo);
+  // Object.freeze(Junjo);
   return Junjo;
 })();
 
