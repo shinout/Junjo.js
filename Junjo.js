@@ -527,7 +527,7 @@ var Junjo = (function() {
             $this.done = true;
             jFail.call(self, new Error('callback wasn\'t called within '+ _this.timeout +' [sec] in function ' + self.label() + '.' ));
           }
-        }, _this.timeout * 1000);
+        }, jInheritValue.call(this, 'timeout') * 1000);
       }
     }
     catch (e) {
