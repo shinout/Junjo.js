@@ -227,19 +227,6 @@ var Junjo = (function() {
     return this;
   };
 
-  // JSDeferred-like API
-  Junjo.prototype.next = function(fn) {
-    var $j = new Junjo();
-    $j(fn);
-    return $j.after(this);
-  };
-
-  Junjo.prototype.fail = function(fn) {
-    var $j = new Junjo();
-    $j(function(e, o) { if (e) fn.call(this, e, o) });
-    return $j.after(this);
-  };
-
   // skip the process with a given label, and make it return the passed arguments
   Junjo.prototype.skip = function() {
     var lbl = A.shift.call(arguments), $fn = this.get(lbl), $$fn = $($fn);
@@ -264,6 +251,21 @@ var Junjo = (function() {
     return ($(this).ended && _(this).result) ? this.commons.out : this;
     return this;
   };
+
+  // JSDeferred-like API
+  Junjo.prototype.next = function(fn) {
+    var $j = new Junjo();
+    $j(fn);
+    return $j.after(this);
+  };
+
+  Junjo.prototype.fail = function(fn) {
+    var $j = new Junjo();
+    $j(function(e, o) { if (e) fn.call(this, e, o) });
+    return $j.after(this);
+  };
+
+  Junjo.prototype.call = Junjo.prototype.run;
 
   /** private functions **/
 
