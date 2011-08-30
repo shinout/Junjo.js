@@ -11,7 +11,7 @@ var Junjo = (function() {
   };
 
   var nextTick = (typeof process == 'object' && typeof process.nextTick == 'function')
-    ? process.nextTick 
+    ? process.nextTick
     : function(fn) { setTimeout(fn, 0) };
 
   var is_arguments = function(v) {
@@ -46,12 +46,14 @@ var Junjo = (function() {
     props[$j.id] = {
       $fns         : [],    // registered functions
       labels       : {},    // {label => position of $fns}
-      listeners    : {}     // eventlisteners
+      listeners    : {},    // eventlisteners
+      result       : false  // if true and all processes are synchronous, return result at $j.run() (experimental)
     };
     resetState.call($j);  // set variables
 
     // properties from options
     ['timeout', 'catcher', 'nodeCallback'].forEach(function(k) { $j[k] = options[k] });
+    if (options.result != undefined) _($j).result = !!options.result;
     return $j;
   };
 
@@ -240,11 +242,13 @@ var Junjo = (function() {
     Object.freeze(_(this));
 
     var args = arguments, $fns = _(this).$fns;
-    $fns.forEach(function($fn) { 
+    $fns.forEach(function($fn) {
       Object.freeze(_($fn));
       jResetState.call($fn);
     });
     $fns.forEach(function($fn) { jExecute.apply($fn, args) });
+
+    return ($(this).ended && _(this).result) ? this.commons.out : this;
     return this;
   };
 
