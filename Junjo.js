@@ -40,7 +40,7 @@ var Junjo = (function() {
 
     Object.defineProperty($j, 'id', { value : ++current_id, writable : false});
     Object.defineProperty($j, 'commons', {value : {err: null, out: {}, shared: {}}, writable : false});
-    Object.seal($j.commons);
+    // Object.seal($j.commons);
 
     // private properties
     props[$j.id] = {
@@ -115,6 +115,13 @@ var Junjo = (function() {
   // register a function
   Junjo.prototype.register = function() {
     var label = (typeof arguments[0] != 'function') ? A.shift.call(arguments) : undefined;
+    console.log("proto", Object.getPrototypeOf(arguments[0]) === Junjo.prototype);
+    if (Object.getPrototypeOf(arguments[0]) === Junjo.prototype) {
+      var $j2 = arguments[0];
+      return this.register(label, function() {
+        $j2.on('end', this.callback).run.apply($j2, arguments);
+      });
+    }
     var $fn   = new $Fn(arguments[0], this);
     var _this = _(this);
     var num   = _this.$fns.push($fn) -1;
@@ -167,6 +174,7 @@ var Junjo = (function() {
   Junjo.prototype.on = function(evtname, fn) {
     if (! (_(this).listeners[evtname] instanceof Array)) _(this).listeners[evtname] = [];
     _(this).listeners[evtname].push(fn);
+    return this;
   };
 
   // get $fn by label
