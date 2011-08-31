@@ -11,7 +11,14 @@ function memdiff(n) {
 }
 
 console.log('-------- load -----------');
-memdiff(15);
+memdiff(20);
+
+console.log('-------- require es5-shim -----------');
+var Junjo = require('../lib/es5-shim/es5-shim');
+memdiff();
+console.log('-------- require es5-shim end -----------');
+memdiff(20);
+
 console.log('-------- require Junjo -----------');
 var Junjo = require('../Junjo');
 memdiff();
