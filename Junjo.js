@@ -115,7 +115,6 @@ var Junjo = (function() {
   // register a function
   Junjo.prototype.register = function() {
     var label = (typeof arguments[0] != 'function') ? A.shift.call(arguments) : undefined;
-    console.log("proto", Object.getPrototypeOf(arguments[0]) === Junjo.prototype);
     if (Object.getPrototypeOf(arguments[0]) === Junjo.prototype) {
       var $j2 = arguments[0];
       return this.register(label, function() {
