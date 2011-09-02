@@ -444,15 +444,10 @@ var Junjo = (function() {
     }));
   };
 
-  $Fn.prototype.catches = function() {
-    if (this.junjo.running) throw new Error("Cannot call catches() while during execution.");
-    A.push.call(arguments, _(this).func);
-    this.junjo.remove(this.label()); // delete this object
-    return this.junjo.catches.apply(this.junjo, arguments);
-  };
+  $Fn.prototype.catches = function(fn) { _(this).catcher = fn; return this };
 
   // JSDeferred-like API
-  $Fn.prototype.fail = function(fn) { _(this).catcher = fn; return this };
+  $Fn.prototype.fail = $Fn.prototype.catches;
   $Fn.prototype.next = function() {
     return this.junjo.register.apply(this.junjo, arguments).after(this.label());
   };

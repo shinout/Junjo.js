@@ -53,7 +53,7 @@ $j('Pitcher06', function() {
 
 $j(function(e, $fn) {
   console.log($fn.label() + ' threw an error with a message : "' + e.message 
-                          + '". This is not a recommended way.');
+                          + '". This is the same as fail().');
 }).catches('Pitcher06'); // (5)
 
 
@@ -101,7 +101,7 @@ except those already have their own catcher function.
 
 4. $(fn1).fail(fn2) : register a catcher function fn2 to fn1.
 
-5. $(fn).catches(label) : register a catcher function to function labeled "label", but this is not a recommended way,
+5. $(fn).catches(fn2) : the same as fail()
 as fn is at first parsed as a normal function (not a catcher), then converted.
 
 6. new Junjo({ catcher: fn }) : set fn as a default catcher function.
@@ -126,7 +126,7 @@ catcher関数には2つの引数が渡されます。
 
 4. $(fn1).fail(fn2) で fn1のcatcher関数をfn2にします。
 
-5. $(fn).catches(label) で labelをラベルに持つ関数のcatcher関数をfnにします。が、この方法は推奨されません。
+5. $(fn).catches(fn2) はfail()と同様です。
 一度catcherでない普通の関数として登録される処理を挟んでしまうため他の方法に比べ処理が遅いからです。
 
 6. new Junjo({ catcher: fn }) で fn が、デフォルトのcatcherに指定されます。
