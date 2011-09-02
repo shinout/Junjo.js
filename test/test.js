@@ -57,13 +57,13 @@ function junjo_test() {
     if (!count) count = 1;
     console.log("--------------[COUNT : " + count + "]------------------");
     this.out.count = ++count;
-    asyncMethod(this.label(), 10, this.callback);
+    asyncMethod(this.label(), 10, this.cb);
     this.shared.hoge = "HogeHoge";
   });
 
   $j('2nd', function() {
     console.log($j.current);
-    asyncMethod($j.current.label(), 20, $j.current.callback);
+    asyncMethod($j.current.label(), 20, $j.current.cb);
     console.log("commons", $j.commons.shared.hoge);
     console.log(this.hoge);
     $j.commons.shared.abc = "ABC";
@@ -78,7 +78,7 @@ function junjo_test() {
   }).after('1st');
 
   $j('4th', function() {
-    asyncMethod(this.label(), 20, this.callback);
+    asyncMethod(this.label(), 20, this.cb);
   }).after('2nd').async();
 
   $j('del', function() {
@@ -87,12 +87,12 @@ function junjo_test() {
 
 
   $j('5th', function() {
-    asyncMethod(this.label(), 20, this.callback);
+    asyncMethod(this.label(), 20, this.cb);
   }).after('1st', '2nd');
 
   $j('6th', syncMethod).params($j.label).after('4th');
 
-  $j('7th', asyncMethod).params($j.label, 100, $j.callback).after();
+  $j('7th', asyncMethod).params($j.label, 100, $j.cb).after();
 
   $j.remove('del');
   console.log("--------- del test----------");
@@ -105,7 +105,7 @@ function junjo_test() {
 
   $j.async('8th', function() {
     syncMethod(this.label());
-    this.callback(null, this.label() + " but synchronous"); // calling synchronously
+    this.cb(null, this.label() + " but synchronous"); // calling synchronously
   }).after('5th');
 
   $j.sync('9th', syncMethod).params($j.label).after('5th');

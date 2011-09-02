@@ -96,6 +96,14 @@ var Junjo = (function() {
       set: empty
     },
 
+    cb : {
+      get: function() {
+        if (this.current) return this.current.callback; // cb_accessed.
+        return new KeyPath(['callback']);
+      },
+      set: empty
+    },
+
     label : {
       get : function () {
         if (this.current) return _(this.current).label;
@@ -361,6 +369,14 @@ var Junjo = (function() {
 
   // public properties
   Object.defineProperty($Fn.prototype, 'callback', {
+    get : function() {
+      $(this).cb_accessed = true;
+      return jSuccess.bind(this);
+    },
+    set : empty
+  });
+
+  Object.defineProperty($Fn.prototype, 'cb', {
     get : function() {
       $(this).cb_accessed = true;
       return jSuccess.bind(this);
