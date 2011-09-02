@@ -54,6 +54,7 @@ var Junjo = (function() {
     // properties from options
     ['timeout', 'catcher', 'nodeCallback'].forEach(function(k) { $j[k] = options[k] });
     if (options.result != undefined) _($j).result = !!options.result;
+    if (options.after != undefined) _($j).after = !!options.after;
     return $j;
   };
 
@@ -135,7 +136,7 @@ var Junjo = (function() {
     if (label == undefined) label = num;
     _($fn).label = label;
     _this.labels[label] = num;
-    return $fn;
+    return _this.after ? $fn.after() : $fn;
   };
 
   ['err', 'out', 'shared'].forEach(function(name) {

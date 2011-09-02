@@ -4,30 +4,36 @@ if (node) junjo_test();
 // test start
 function junjo_test() {
 
-  var j1 = new Junjo();
+  var $j = new Junjo({after: true});
 
-  j1('1st', function() {
-    asyncMethod(this.label(), 10, this.callback);
+  $j('1st', function() {
+    asyncMethod(this.label(), 50, this.callback);
     this.shared.hoge = "HogeHoge";
   });
 
-  j1('2nd', function(err, val) {
-    this.out = 'val=' + val + '&hoge=' + this.shared.hoge + '&val2=' + this.label();
-  }).after();
-
-  var j2 = new Junjo().after(j1);
-  
-  j2('3rd', function(err, val) {
-    return val + ' (from j1), ' + this.label();
+  $j('2nd', function() {
+    asyncMethod(this.label(), 10, this.callback);
   });
 
-  j2('4th', function(val) {
-    this.out = val + ' and ' + this.label();
-  }).after();
-
-  j2.on('end', function(err, val) {
-    console.log(err, val);
+  $j('3rd', function() {
+    asyncMethod(this.label(), 20, this.callback);
   });
 
-  j1.run(); // j2 runs too.
+  $j('4th', function() {
+    asyncMethod(this.label(), 10, this.callback);
+  });
+
+  $j('5th', function() {
+    asyncMethod(this.label(), 10, this.callback);
+  }).after();
+
+  $j('6th', function() {
+    asyncMethod(this.label(), 10, this.callback);
+  }).after();
+
+  $j('7th', function() {
+    asyncMethod(this.label(), 10, this.callback);
+  }).after('2nd', '3rd');
+
+  $j.run();
 }
