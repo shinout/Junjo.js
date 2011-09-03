@@ -360,28 +360,34 @@ var Junjo = (function() {
     };
   };
 
+  // public properties
   // proxy to properties in Junjo, for enumerablity, not set to $Fn.prototype.
   ['shared', 'err', 'out'].forEach(function(propname) {
     Object.defineProperty($Fn.prototype, propname, {
       get : function()  { return this.junjo.commons[propname] },
-      set : function(v) { this.junjo.commons[propname] = v },
-      enumerable: true
+      set : function(v) { this.junjo.commons[propname] = v }
     });
   });
 
-  // public properties
-  Object.defineProperty($Fn.prototype, 'callback', {
-    get : function() {
-      $(this).cb_accessed = true;
-      return jSuccess.bind(this);
-    },
-    set : empty
+  ['callback', 'cb'].forEach(function(propname) {
+    Object.defineProperty($Fn.prototype, propname, {
+      get : function() {
+        $(this).cb_accessed = true;
+        return jSuccess.bind(this);
+      },
+      set : empty
+    });
   });
 
-  Object.defineProperty($Fn.prototype, 'cb', {
+  Object.defineProperty($Fn.prototype, 'sub', {
     get : function() {
-      $(this).cb_accessed = true;
-      return jSuccess.bind(this);
+      var $this = $(this);
+      if (!$this.sub) {
+        $this.sub = new Junjo();
+        $this.sub.on('end', this.callback);
+        nextTick(function() { $this.sub.run() });
+      }
+      return $this.sub;
     },
     set : empty
   });
