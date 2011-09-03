@@ -27,6 +27,7 @@ function junjo_test() {
   var $j2 = new Junjo();
 
   $j2('BB', function() {
+    console.log(arguments);
     syncMethod(this.label());
     this.out[this.label()] = "piyo";
   });
@@ -38,5 +39,21 @@ function junjo_test() {
     console.log(out);
   });
 
-  $j.run();
+  var $j3 = new Junjo();
+  $j3(function() {
+    this.sub(function() {
+      this.out = "sub";
+    });
+  })
+  .next(function(err, out) {
+    this.out = out + "sub";
+  });
+
+  $j($j3)
+  .next(function(err, out) {
+    console.log("subsub? -->", out);
+  });
+
+  $j.run('000', 111, 2222);
 }
+

@@ -128,11 +128,9 @@ var Junjo = (function() {
   // register a function
   Junjo.prototype.register = function() {
     var label = (typeof arguments[0] != 'function') ? A.shift.call(arguments) : undefined;
-    if (Object.getPrototypeOf(arguments[0]) === Junjo.prototype) {
+    if (arguments[0].constructor == Junjo) {
       var $j2 = arguments[0];
-      return this.register(label, function() {
-        $j2.on('end', this.callback).run.apply($j2, arguments);
-      });
+      return this.register(label, function() { this.sub = $j2 });
     }
     var $fn   = new $Fn(arguments[0], this);
     var _this = _(this);
@@ -389,7 +387,7 @@ var Junjo = (function() {
         var $this = $(this);
         $this.sub = $j;
         $this.sub.on('end', this.callback);
-        nextTick(function() { $this.sub.run() });
+        nextTick(function() { $this.sub.run.apply($this.sub, $this.args) });
       }
     }
   });
