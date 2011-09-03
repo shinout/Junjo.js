@@ -283,8 +283,6 @@ var Junjo = (function() {
     return $j.after(this);
   };
 
-  Junjo.prototype.call = Junjo.prototype.run;
-
   /** private functions **/
 
   var resetState = function() {
