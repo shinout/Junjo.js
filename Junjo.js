@@ -58,6 +58,7 @@ var Junjo = (function() {
     if (options.after != undefined) _($j).after = !!options.after;
     if (fn) $j(fn);
     if (options.run) { nextTick($j.run.bind($j, options.run)) }
+    $j.constructor = Junjo;
     return $j;
   };
 
@@ -382,14 +383,17 @@ var Junjo = (function() {
   Object.defineProperty($Fn.prototype, 'sub', {
     get : function() {
       var $this = $(this);
-      if (!$this.sub) {
-        $this.sub = new Junjo();
+      if (!$this.sub) { this.sub = new Junjo() }
+      return $this.sub;
+    },
+    set : function($j) {
+      if ($j.constructor == Junjo) {
+        var $this = $(this);
+        $this.sub = $j;
         $this.sub.on('end', this.callback);
         nextTick(function() { $this.sub.run() });
       }
-      return $this.sub;
-    },
-    set : empty
+    }
   });
 
   $Fn.prototype.scope = function(scope) {

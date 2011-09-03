@@ -18,9 +18,25 @@ function junjo_test() {
     }).after();
   });
 
-  $j('last', function(err, out) {
+  $j('4th', function(err, out) {
     console.log(out);
-  }).after();
+  }).after('1st');
+
+
+
+  var $j2 = new Junjo();
+
+  $j2('BB', function() {
+    syncMethod(this.label());
+    this.out[this.label()] = "piyo";
+  });
+
+  $j('AA', function() {
+    syncMethod(this.label());
+    this.sub = $j2;
+  }).next(function(err, out) {
+    console.log(out);
+  });
 
   $j.run();
 }
