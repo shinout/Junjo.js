@@ -26,8 +26,9 @@ var Junjo = (function() {
   function D(obj) { delete props[obj.id], variables[obj.id]} // deletion
 
   /** constructor **/
-  var Junjo = function(options) {
-    options = options || {};
+  var Junjo = function() {
+    var fn      = (typeof arguments[0] == 'function') ? A.shift.call(arguments) : undefined;
+    var options = (typeof arguments[0] == 'object') ? arguments[0] : {};
 
     // this function $j is returned in Junjo().
     var $j = function() { return $j.register.apply($j, arguments) };
@@ -55,6 +56,8 @@ var Junjo = (function() {
     ['timeout', 'catcher', 'nodeCallback'].forEach(function(k) { $j[k] = options[k] });
     if (options.result != undefined) _($j).result = !!options.result;
     if (options.after != undefined) _($j).after = !!options.after;
+    if (fn) $j(fn);
+    if (options.run) { nextTick($j.run.bind($j, options.run)) }
     return $j;
   };
 
@@ -269,10 +272,8 @@ var Junjo = (function() {
   };
 
   // JSDeferred-like API
-  Junjo.prototype.next = function(fn) {
-    var $j = new Junjo();
-    $j(fn);
-    return $j.after(this);
+  Junjo.prototype.next = function(fn, options) {
+    return new Junjo(fn, options).after(this);
   };
 
   Junjo.prototype.fail = function(fn) {
