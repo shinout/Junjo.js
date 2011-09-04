@@ -61,10 +61,6 @@ function junjo_test() {
 
   jj.on('end', function(e, r) {
     consolelog("END", e, r);
-  }),
-
-  jj.on('terminate', function(e, r) {
-    consolelog("terminated!!!!", e, r);
   })
 	);
 }

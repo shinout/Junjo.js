@@ -172,7 +172,9 @@ var Junjo = (function() {
 
   // terminate whole process
   Junjo.prototype.terminate = function() {
-    $(this).terminated = true;
+    _(this).$fns.forEach(function($fn) {
+      this.skip($fn.label());
+    }, this);
   };
 
   // emitting event asynchronously. The similar way as EventEmitter in Node.js
@@ -294,7 +296,6 @@ var Junjo = (function() {
       runnable     : true,  // allowable to run or not
       running      : false, // registered processes are running or not
       results      : {},    // results of each functions
-      terminated   : false, // terminated or not
       ended        : false, // emited end event or not
       finished     : 0,     // the number of finished functions
       current      : null,  // pointer to current function
@@ -320,19 +321,6 @@ var Junjo = (function() {
       this.emit('end', this.commons.err, this.commons.out);
     }
 
-    if ($this.terminated) {
-      var bool = _this.$fns.every(function($fn) {
-        var $$fn = $($fn);
-        return $$fn.cb_called || !$$fn.called;
-      });
-      if (!bool) return;
-
-      this.emit('terminate', this.commons.err, this.commons.out);
-      if (!$this.ended) {
-        $this.ended = true;
-        this.emit('end', this.commons.err, this.commons.out);
-      }
-    }
   }
 
   /** private class KeyPath **/
@@ -542,7 +530,7 @@ var Junjo = (function() {
     var _this  = _(this), $this = $(this), _junjo = _(this.junjo), $junjo = $(this.junjo);
 
     // filters
-    if ($junjo.terminated || $this.called || $this.counter-- > 0) return; // execute filter
+    if ($this.called || $this.counter-- > 0) return; // execute filter
 
     // preparation
     $this.called = true;
@@ -574,7 +562,7 @@ var Junjo = (function() {
       }
       else {
         if ($this.cb_attempted) return jSuccess.apply(this, $this.cb_attempted);
-        if ($junjo.terminated || !jInheritValue.call(this, 'timeout')) return;
+        if (!jInheritValue.call(this, 'timeout')) return;
 
         var self = this;
         var timeout = jInheritValue.call(this, 'timeout');

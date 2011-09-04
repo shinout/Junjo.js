@@ -73,9 +73,5 @@ function junjo_test() {
     consolelog("END", e, r);
   });
 
-  jj.on('terminate', function(e, r) {
-    consolelog("terminated!!!!", e, r);
-  });
-
   jj.run();
 }

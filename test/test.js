@@ -155,10 +155,6 @@ function junjo_test() {
     if (result.count < 3) $j.run(result.count);
   });
 
-  $j.on('terminate', function(e, r) {
-    consolelog("terminated!", e, r);
-  });
-
   $j.run();
 }
 
