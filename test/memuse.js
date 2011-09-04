@@ -44,3 +44,21 @@ while (j < 30) {
   memdiff();
   j++;
 }
+
+console.log('-------- require umecob -----------');
+var umecob = require('./umecob');
+memdiff();
+console.log('-------- require umecob end -----------');
+var u = [];
+memdiff(6);
+
+console.log('-------- new umecob -----------');
+
+var j = 0;
+while (j < 30) {
+  u.push(new umecob); 
+  memdiff();
+  j++;
+}
+
+

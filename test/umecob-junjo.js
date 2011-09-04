@@ -1,18 +1,24 @@
 var umecob = require('./umecob');
 
-var u = new umecob({sync: true});;
-var $j = u.run(__dirname + '/tpl.html', {
+var u2 = new umecob({starts: [function(params) {
+  params.tpl_id = __dirname + '/' + params.tpl_id + '.html';
+}]});
+
+var u = new umecob({sync: true, sub: u2});
+
+var result = u.run(__dirname + '/tpl.html', {
   hoge: "fad",
   afsd: "f"
 });
 
-if (typeof $j == 'function') {
-  $j.next(function(err, out) {
-    console.log(out);
-  });
-}
-else {
-  console.log($j);
-}
+console.log(result);
+console.log('-----------------------------------');
 
-console.log(Object.keys(umecob));
+var $j = u2.run('tpl', {
+  hoge: "fad",
+  afsd: "f"
+});
+
+$j.next(function(err, out) {
+  console.log(out);
+});

@@ -78,7 +78,7 @@ umecob.prototype.run = function() {
       if (params[k] === undefined) params[k] = this.params[k];
     }
   }, this);
-  params.umecob || (params.umecob = this);
+  params.sub || (params.sub = this);
 
   return umecob.run(params);
 };
@@ -214,8 +214,9 @@ umecob.run = function(params) {
 
   $j('starts', function(starts) {
     starts.forEach(function(fn) {
-      this.shared.params = fn.apply(this.shared.params);
-    });
+      var val = fn.call(null, this.shared.params);
+      if (typeof val == 'object') this.shared.params = val;
+    }, this);
   }).after('startValidator');
 
   $j('inputValidator', function() {
@@ -401,11 +402,10 @@ umecob.render = function(params) {
     this.out = echo.getText();
   });
 
+  echo.data      = params.data;
   echo.params    = params;
   echo.sync      = params.sync || false;
-  echo.umecob    = params.umecob || new umecob();
-  echo.umecob.params.sync = echo.sync;
-  echo.data      = params.data;
+  echo.umecob    = params.sub || new umecob({sync : echo.sync});
   echo.addJunjo  = function(fn) { $j.register(buff.getIndex(), fn); buff.increment() };
   echo.addUmecob = function(um) { ( um instanceof Junjo) ? echo.addJunjo(um) : echo(um) };
   echo.put       = function(i, v) { buff.put(i, v) };
