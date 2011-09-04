@@ -596,7 +596,7 @@ Parser.prototype[SHORT_ECHO] = function(c) {
   }
 };
 
-// ${hoge ? の状態
+// ${hoge ?
 Parser.prototype[QS_SHORT_ECHO] = function(c) {
   switch (c) {
   default:
@@ -614,7 +614,7 @@ Parser.prototype[QS_SHORT_ECHO] = function(c) {
   }
 };
 
-// ${hoge ?: の状態
+// ${hoge ?:
 Parser.prototype[ALTERNATE_SHORT_ECHO] = function(c) {
   switch (c) {
   default:
@@ -655,7 +655,7 @@ Parser.prototype[ALTERNATE_SHORT_ECHO] = function(c) {
   }
 };
 
-// this.lf1 が出た状態
+// this.lf1
 Parser.prototype[JS_PRE_START] = function(c) {
   switch (c) {
   case this.lf2:
@@ -668,7 +668,7 @@ Parser.prototype[JS_PRE_START] = function(c) {
   }
 };
 
-// rg1 rg2 が出た状態(e.g. %])。次に改行コードが出てきたらJSのコードに含める
+// rg1 rg2
 Parser.prototype[FINISH_JS] = function(c) {
   switch (c) {
   case '\n':
@@ -691,7 +691,7 @@ Parser.prototype.strToCode = function() {
   }
 }
 
-// \ の次
+// next to \
 Parser.prototype[ESCAPING] = function(c) {
   switch (c) {
   case '\\':
@@ -749,7 +749,7 @@ function jsStartTemplate(stateName, preEndStateName) {
       this.end = true;
     }
   };
-}
+};
 
 function jsPreEndTemplate(mainStateName, fn) {
   return function(c) {
@@ -795,7 +795,7 @@ Parser.prototype[JS_ASYNC_PRE_END] = jsPreEndTemplate(JS_ASYNC, function() {
   this.buffer.clear();
 });
 
-// / が出た場合. 正規表現とか割り算かもしれないけど
+// /
 Parser.prototype[JS_PRE_COMMENT] = function(c) {
   this.buffer.add(c);
   switch (c) {
@@ -803,22 +803,16 @@ Parser.prototype[JS_PRE_COMMENT] = function(c) {
   case '*': return JS_MCOMMENT;
   default :  return this.stack.pop();
   }
-}
-/*
-// // が出た場合
-Parser.prototype["JS_SCOMMENT"] = function(c) {
-  this.buffer.add(c);
-  return (c == '\n') ? this.stack.pop() : 'JS_SCOMMENT'; 
-}
-*/
-// /* が出た場合
+};
+
+// /*
 Parser.prototype[JS_MCOMMENT] = function(c) {
   this.buffer.add(c);
   switch (c) {
   case '*': return JS_PRE_ENDMCOMMENT;
   default : return JS_MCOMMENT;
   }
-}
+};
 // /* *
 Parser.prototype[JS_PRE_ENDMCOMMENT] = function(c) {
   this.buffer.add(c);
@@ -849,11 +843,11 @@ function insideQuotation(stateName, type) {
   };
 }
 
-// ' の中の状態
+// '
 Parser.prototype[INSIDE_SQ] = insideQuotation(INSIDE_SQ, "'");
-// " の中の状態
+// "
 Parser.prototype[INSIDE_DQ] = insideQuotation(INSIDE_DQ, '"');
-// " の中でのescape
+// "
 Parser.prototype[JS_ESCAPE] = function(c) {
   this.buffer.add("\\"+c);
   return this.stack.pop();
