@@ -56,7 +56,11 @@ var Junjo = (function() {
     ['timeout', 'catcher', 'nodeCallback'].forEach(function(k) { $j[k] = options[k] });
     if (options.result != undefined) _($j).result = !!options.result;
     if (options.after != undefined) _($j).after = !!options.after;
-    if (fn) $j(fn);
+    if (fn) {
+			$j(fn)
+			.next(function() { this.out = (arguments.length == 1) ? arguments[0] : args2arr(arguments) })
+			.fail(function(e) { this.err = e });
+		}
     if (options.run) { nextTick($j.run.bind($j, options.run)) }
     $j.constructor = Junjo;
     return $j;
@@ -67,6 +71,7 @@ var Junjo = (function() {
     current  : { get : function () { return $(this).current }, set: empty },
     runnable : { get : function () { return $(this).runnable && !$(this).running }, set : empty },
     running  : { get : function () { return $(this).running }, set : empty },
+    length   : { get : function () { return _(this).$fns.length }, set : empty },
 
     timeout : {
       get : function() { return (_(this).timeout != null) ? _(this).timeout : 5 },
@@ -265,6 +270,7 @@ var Junjo = (function() {
       jResetState.call($fn);
     });
     $fns.forEach(function($fn) { jExecute.apply($fn, args) });
+    if (!$fns.length) finishCheck.call(this);
 
     return ($(this).ended && _(this).result) ? this.commons.out : this;
     return this;
@@ -300,11 +306,15 @@ var Junjo = (function() {
   };
 
   var setResult = function($fn, result) {
-    var _this = _(this), $this = $(this);
+    var $this = $(this);
     $this.finished++;
 
     $this.results[$fn.label()] = result;
+    finishCheck.call(this);
+  };
 
+  var finishCheck = function() {
+    var _this = _(this), $this = $(this);
     if ($this.finished == _this.$fns.length && !$this.ended) {
       $this.ended = true;
       this.emit('end', this.commons.err, this.commons.out);
@@ -323,7 +333,7 @@ var Junjo = (function() {
         this.emit('end', this.commons.err, this.commons.out);
       }
     }
-  };
+  }
 
   /** private class KeyPath **/
   var KeyPath = function(arr, type, obj) {
@@ -384,9 +394,9 @@ var Junjo = (function() {
     },
     set : function($j) {
       if ($j.constructor == Junjo) {
-        var $this = $(this);
+        var $this = $(this), cb = this.callback;
         $this.sub = $j;
-        $this.sub.on('end', this.callback);
+        $this.sub.on('end', function() { cb(this.err, this.out) });
         nextTick(function() { $this.sub.run.apply($this.sub, $this.args) });
       }
     }
@@ -567,12 +577,13 @@ var Junjo = (function() {
         if ($junjo.terminated || !jInheritValue.call(this, 'timeout')) return;
 
         var self = this;
+        var timeout = jInheritValue.call(this, 'timeout');
         $this.timeout_id = setTimeout(function() {
           if (!$this.cb_called) {
             $this.done = true;
-            jFail.call(self, new Error('callback wasn\'t called within '+ _this.timeout +' [sec] in function ' + self.label() + '.' ));
+            jFail.call(self, new Error('callback wasn\'t called within '+ timeout +' [sec] in function ' + self.label() + '.' ));
           }
-        }, jInheritValue.call(this, 'timeout') * 1000);
+        }, timeout * 1000);
       }
     }
     catch (e) {
