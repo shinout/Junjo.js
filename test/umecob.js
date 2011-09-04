@@ -1,4 +1,4 @@
-var umecob = (function(isNode) {
+var umecob = (function() {
 
 if (typeof require == 'function') var Junjo = require('../Junjo');
 
@@ -60,7 +60,7 @@ if (typeof require == 'function') var Junjo = require('../Junjo');
  **/
 function umecob() {
   var params = parseArgs.apply(null, arguments);
-  if (!this instanceof umecob) return umecob.run(params);
+  if (!(this instanceof umecob)) return umecob.run(params);
   this.params = params;
 }
 
@@ -86,7 +86,7 @@ umecob.prototype.run = function() {
 /**
  * is Node.js or not
  **/
-umecob.node = isNode;
+umecob.node = (typeof exports == 'object' && exports === this);
 
 /** private functions **/
 /**
@@ -299,7 +299,12 @@ umecob.run = function(params) {
     $j.terminate();
   })
   .next('data',  function() {
-    this.shared.params.data = unifySyncAsync(arguments);
+    var data = unifySyncAsync(arguments);
+    var data = (typeof data == 'object') ? data : eval('('+ data +')');
+    var attach = this.shared.params.attach; 
+    if (typeof attach == 'object')
+      for (var i in attach) data[i] = (data[i] === undefined) ? attach[i] : data[i];
+    this.shared.params.data = data;
   });
 
   $j('render', function() {
@@ -862,7 +867,6 @@ umecob.compilers = {
 };
 
 return umecob;
-})(typeof exports == 'object' && exports === this);
-if (umecob.node) module.exports = umecob;
+}).call(this);
 
-u = new umecob({sync : true})
+if (umecob.node) module.exports = umecob;
