@@ -33,5 +33,31 @@ function junjo_test() {
     console.log("grepresult end");
   }).after('1st');
 
+  var $j = new Junjo();
+
+  $j(function() {
+    var http = require('http');
+    var req = http.request({
+      method: 'GET',
+      host: 'google.com',
+      port: 80,
+      path: '/',
+      protocol: 'http' }, this.cb);
+    req.end();
+  })
+
+  .next(function(res) {
+    this.emitOn(res,'data', 'response');
+  })
+
+  .next(function() {
+    console.log("END");
+  });
+
+  $j.on('response', function(data) {
+    console.log(data.toString());
+  });
+
+  $j.after(jj);
   jj.run();
 }

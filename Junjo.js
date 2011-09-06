@@ -499,7 +499,7 @@ var Junjo = (function() {
         var n = $this.emitters.indexOf(emitter);
         if (n < 0) return;
         $this.emitters.splice(n, 1);
-        if ($this.emitters.length == 0) cb(); 
+        if ($this.emitters.length == 0) nextTick(cb);
       });
       emitter[(typeof emitter.once == 'function') ? 'once' : 'on']('error', function(e) {
         var n = $this.emitters.indexOf(emitter);
