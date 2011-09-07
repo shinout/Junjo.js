@@ -521,6 +521,13 @@ var Junjo = (function() {
     return this;
   };
 
+  $Fn.prototype.gather = function(emitter, evtname) {
+    evtname || (evtname = 'data');
+    var val = '', cb = this.callback;
+    emitter.on(evtname, function(data) { val += data.toString() });
+    emitter.on('end', function() { cb(val) });
+  };
+
   $Fn.prototype.emitError = function(emitter, evtname) {
     if (!this.junjo.running) throw new Error("Cannot call emitOn() before execution.");
     var self = this;
