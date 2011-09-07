@@ -1,0 +1,26 @@
+<!DOCTYPE HTML>
+<html lang="${lang}">
+<head>
+<meta charset="UTF-8">
+<title>${title('Junjo.js')}</title>
+<script type="text/javascript" src="/js/syhi/XRegExp.js"></script>
+<script type="text/javascript" src="/js/syhi/shCore.js"></script>
+<script type="text/javascript" src="/js/syhi/shBrushJScript.js"></script>
+<link rel="stylesheet" href="/css/reset-min.css" />
+<link rel="stylesheet" href="/css/syhi/shCore.css" />
+<link rel="stylesheet" href="/css/syhi/shThemeMidnight.css" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<header>
+<h1>${title('Junjo.js')}</h1>
+<p id="twitterLink"><a href="http://twitter.com/shinout">@shinout</a></p>
+</header>
+<% examples.forEach(function(example) { %>
+<% {tpl_id : docdir + '/example.html', data_id : example, data_getter : 'code', attach: {lang : lang} } %>
+<% }) %>
+<script type="text/javascript">
+SyntaxHighlighter.all();
+</script>
+</body>
+</html>

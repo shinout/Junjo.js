@@ -45,13 +45,21 @@ function junjo_test() {
       protocol: 'http' }, this.cb);
     req.end();
   })
+  .fail(function(e) {
+    console.log("request Error", e.message);
+  })
 
   .next(function(res) {
     this.emitOn(res,'data', 'response');
+    this.emitOn(res,'error', 'resError');
   })
 
   .next(function() {
     console.log("END");
+  });
+
+  $j.on('resError', function(e) {
+    console.log("ERROR", e.toString());
   });
 
   $j.on('response', function(data) {
