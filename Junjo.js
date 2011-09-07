@@ -464,7 +464,7 @@ var Junjo = (function() {
   };
 
   $Fn.prototype.failSafe = function() {
-    var args = args2arr(arguments);
+    var args = arguments.length ? args2arr(arguments) : true;
     return this.catches(function() { return args });
   };
 
