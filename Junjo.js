@@ -71,7 +71,7 @@ var Junjo = (function() {
     current  : { get : function () { return $(this).current }, set: empty },
     runnable : { get : function () { return $(this).runnable && !$(this).running }, set : empty },
     running  : { get : function () { return $(this).running }, set : empty },
-    length   : { get : function () { return _(this).$fns.length }, set : empty },
+    size     : { get : function () { return _(this).$fns.length }, set : empty },
 
     timeout : {
       get : function() { return (_(this).timeout != null) ? _(this).timeout : 5 },
@@ -172,9 +172,7 @@ var Junjo = (function() {
 
   // terminate whole process
   Junjo.prototype.terminate = function() {
-    _(this).$fns.forEach(function($fn) {
-      this.skip($fn.label());
-    }, this);
+    _(this).$fns.forEach(function($fn) { this.skip($fn.label()) }, this);
   };
 
   // emitting event asynchronously. The similar way as EventEmitter in Node.js
@@ -189,6 +187,14 @@ var Junjo = (function() {
 
   // set eventListener
   Junjo.prototype.on = function(evtname, fn) {
+    if (evtname == 'end' && $(this).ended) {
+      var self = this;
+      nextTick(function() {
+        // pseudo onEnd
+        fn.call(self.commons, self.commons.err, self.commons.out);
+      });
+      return;
+    }
     if (! (_(this).listeners[evtname] instanceof Array)) _(this).listeners[evtname] = [];
     _(this).listeners[evtname].push(fn);
     return this;
@@ -255,7 +261,7 @@ var Junjo = (function() {
   // skip the process with a given label, and make it return the passed arguments
   Junjo.prototype.skip = function() {
     var lbl = A.shift.call(arguments), $fn = this.get(lbl), $$fn = $($fn);
-    if ($$fn.called) return;
+    if ($$fn.called || $$fn.skipped) return;
     $$fn.skipped = arguments;
   };
 
@@ -272,10 +278,9 @@ var Junjo = (function() {
       jResetState.call($fn);
     });
     $fns.forEach(function($fn) { jExecute.apply($fn, args) });
-    if (!$fns.length) finishCheck.call(this);
+    finishCheck.call(this);
 
     return ($(this).ended && _(this).result) ? this.commons.out : this;
-    return this;
   };
 
   // JSDeferred-like API
@@ -487,29 +492,34 @@ var Junjo = (function() {
 
   $Fn.prototype.emitOn = function(emitter, evtname, newname) {
     if (!this.junjo.running) throw new Error("Cannot call emitOn() before execution.");
-    var self = this, $this = $(this);
+    var self = this;
     emitter.on(evtname, function() {
       A.unshift.call(arguments, newname || evtname);
       self.junjo.emit.apply(self.junjo, arguments);
     });
+    return this.emitEnd(emitter);
+  };
 
+  $Fn.prototype.emitEnd = function(emitter) {
+    if (!this.junjo.running) throw new Error("Cannot call emitOn() before execution.");
+    var $this = $(this);
     if ($this.emitters.indexOf(emitter) < 0) {
       var cb = this.callback;
-      emitter.on('end', function(){
+      emitter.on('end', function() {
         var n = $this.emitters.indexOf(emitter);
         if (n < 0) return;
-        $this.emitters.splice(n, 1);
-        if ($this.emitters.length == 0) nextTick(cb);
-      });
-      emitter[(typeof emitter.once == 'function') ? 'once' : 'on']('error', function(e) {
-        var n = $this.emitters.indexOf(emitter);
-        if (n < 0) return;
-        $this.emitters.splice(n, 1);
-        if ($this.emitters.length == 0) jFail.bind(self);
+        $this.emitters[n] = arguments;
+        if ($this.emitters.every(function(v) {return is_arguments(v)})) nextTick(function() {cb($this.emitters) });
       });
       $this.emitters.push(emitter);
     }
     return this;
+  };
+
+  $Fn.prototype.emitError = function(emitter, evtname) {
+    if (!this.junjo.running) throw new Error("Cannot call emitOn() before execution.");
+    var self = this;
+    emitter.on(evtname || 'error', function(e) { jFail.bind(self) });
   };
 
   /** private functions of $Fn **/
@@ -621,8 +631,8 @@ var Junjo = (function() {
 
     var succeeded = A.shift.call(arguments);
     setResult.call(this.junjo, this, ($this.skipped != null || isSync(this)) ? arguments[0] : arguments);
-
-    if (succeeded) _this.callbacks.forEach(function($fn) { jExecute.apply($fn) });
+    if (!succeeded) _this.callbacks.forEach(function($fn) { this.junjo.skip($fn.label()) }, this);
+    _this.callbacks.forEach(function($fn) { jExecute.apply($fn) });
   };
 
   /** static functions **/

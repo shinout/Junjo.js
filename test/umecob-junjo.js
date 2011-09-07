@@ -13,7 +13,6 @@ var result = u.run(__dirname + '/tpl.html', {
 
 console.log(result);
 console.log('-----------------------------------');
-
 var $j = u2.run('tpl', {
   hoge: "fad",
   afsd: "f"

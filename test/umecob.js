@@ -281,7 +281,6 @@ umecob.run = function(params) {
     params.code = params.compiler(params);
   });
 
-
   $j('data_getter', function(params) {
     if (params.data) return params.data;
     if (!params.data_id) return {};
@@ -416,7 +415,7 @@ umecob.render = function(params) {
   echo.put       = function(i, v) { buff.put(i, v) };
   echo.getText   = function() { return buff.join() };
   echo.getResult = function() {
-    return (echo.sync) ? echo.getText() : $j.run();
+    return (echo.sync || !$j.size) ? echo.getText() : $j.run();
   };
   try {
     return uEval(echo, params.code);
