@@ -463,6 +463,11 @@ var Junjo = (function() {
     return this.junjo.register.apply(this.junjo, arguments).after(this.label());
   };
 
+  $Fn.prototype.failSafe = function() {
+    var args = args2arr(arguments);
+    return this.catches(function() { return args });
+  };
+
   $Fn.prototype.catchesAbove = function() {
     if (this.junjo.running) throw new Error("Cannot call catchesAbove() during execution.");
     var func  = _(this).func;
