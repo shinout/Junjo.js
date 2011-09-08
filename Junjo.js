@@ -463,7 +463,7 @@ var Junjo = (function() {
   };
 
   $Fn.prototype.failSafe = function() {
-    var args = arguments.length ? args2arr(arguments) : true;
+    var args = arguments;
     return this.catches(function() { return args });
   };
 
