@@ -17,7 +17,7 @@ function junjo_test() {
   console.log("connecting to " + host);
 
   var $j = new Junjo({
-    nodeCallback : true,
+    firstError   : true,
     timeout      : 3,
     catcher      : function(e, jfn) {
       console.error(jfn.label());

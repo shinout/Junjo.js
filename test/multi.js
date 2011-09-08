@@ -34,7 +34,7 @@ function junjo_test() {
     console.log(arguments);
     return Junjo.multi(1,2,3,4);
   })
-  .nodeCallback(true)
+  .firstError(true)
   .fail(function(e, args) {
     return Junjo.multi(5,6,7,8);
   })

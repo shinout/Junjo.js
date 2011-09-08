@@ -51,7 +51,7 @@ var Junjo = (function() {
     resetState.call($j);  // set variables
 
     // properties from options
-    ['timeout', 'catcher', 'nodeCallback'].forEach(function(k) { $j[k] = options[k] });
+    ['timeout', 'catcher', 'firstError'].forEach(function(k) { $j[k] = options[k] });
     if (options.result != undefined) _($j).result = !!options.result;
     if (options.after != undefined) _($j).after = !!options.after;
     if (fn) {
@@ -90,9 +90,9 @@ var Junjo = (function() {
       writable : false
     },
 
-    nodeCallback : {
-      get : function() { return !!_(this).nodeCallback },
-      set : function(v) { if (typeof v == 'boolean') _(this).nodeCallback = v }
+    firstError : {
+      get : function() { return !!_(this).firstError },
+      set : function(v) { if (typeof v == 'boolean') _(this).firstError = v }
     },
 
     callback : {
@@ -397,8 +397,8 @@ var Junjo = (function() {
     return this;
   };
 
-  $Fn.prototype.nodeCallback = function(bool) {
-    _(this).nodeCallback = (bool !== false);
+  $Fn.prototype.firstError = function(bool) {
+    _(this).firstError = (bool !== false);
     return this;
   };
 
@@ -572,7 +572,7 @@ var Junjo = (function() {
     if (_this.params.length) $this.args = Junjo.args(_this.params, this);
 
     try {
-      if ($this.skipped != null) return jNext.call(this, true, $this.skipped, true); // ignore nodeCallback
+      if ($this.skipped != null) return jNext.call(this, true, $this.skipped, true); // ignore firstError
 
       var ret = _this.func.apply(_this.scope || this, $this.args); // execution
       $this.done = true;
@@ -625,7 +625,7 @@ var Junjo = (function() {
   var jNext = function(succeeded, result, skipFailCheck) {
     var _this = _(this), $this = $(this), _junjo = _(this.junjo);
     if ($this.cb_called) return;
-    if (jInheritValue.call(this, 'nodeCallback') && !skipFailCheck && result && is_arguments(result) && result[0])
+    if (jInheritValue.call(this, 'firstError') && !skipFailCheck && result && is_arguments(result) && result[0])
       return jFail.call(this, result[0]);
 
     $this.cb_called = true;

@@ -269,7 +269,7 @@ umecob.run = function(params) {
       params.tpl_getter.async(params.tpl_id, this.cb);
     }
   })
-  .nodeCallback(true)
+  .firstError(true)
   .after('inputValidator')
   .fail(function(e, args) {
     this.out = e.message;
@@ -291,7 +291,7 @@ umecob.run = function(params) {
       params.data_getter.async(params.data_id, this.cb);
     }
   })
-  .nodeCallback(true)
+  .firstError(true)
   .after('inputValidator')
   .fail(function(e, args) {
     this.out = e.message;

@@ -13,7 +13,7 @@ umecob.data_getters['code'] = {
 
     $j(fs.readFile)
     .bind(fs, __dirname + '/../examples/' + id + '.js', $j.cb)
-    .nodeCallback(true);
+    .firstError(true);
 
     $j(function(err, result) {
       this.out = exparser(result.toString());

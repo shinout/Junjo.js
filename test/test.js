@@ -19,7 +19,7 @@ function junjo_test() {
   });
 
   $j('nodecberr', function() {
-    this.nodeCallback();
+    this.firstError();
   });
 
   $j('scoperr', function() {

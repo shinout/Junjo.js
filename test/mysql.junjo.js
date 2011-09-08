@@ -16,7 +16,7 @@ function junjo_test() {
   var COL_NAME    = data.colname;
   var DEFAULT_STR = data.default_str || 'MDS';
 
-  var $j = new Junjo({ nodeCallback: true });
+  var $j = new Junjo({ firstError: true });
 
   function $query() {
     var sql  = Array.prototype.shift.call(arguments);

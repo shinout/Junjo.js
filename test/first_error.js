@@ -14,7 +14,7 @@ function junjo_test() {
 
   var J = (node) ? require('../Junjo') : Junjo;
   var jj = new J({
-    nodeCallback: true
+    firstError : true
 	});
 
   jj('1st', function() {
@@ -62,8 +62,8 @@ function junjo_test() {
     asyncMethod(this.label(), 35, this.callback);
   }).afterAbove();
 
-  jj.catchesAbove(function(e, jfn) {
-    consolelog("catch!" + e.message, jfn.label());
+  jj.catchesAbove(function(e, args) {
+    consolelog("catch!" + e.message, this.label());
 		return false;
   });
 
