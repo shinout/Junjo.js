@@ -1,4 +1,7 @@
 var node = (typeof exports == 'object' && exports === this);
+if (node) {
+  require('../lib/termcolor').define();
+}
 
 function asyncMethod(name, n, cb, e) {
   consolelog(name);
