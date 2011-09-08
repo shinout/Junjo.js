@@ -15,6 +15,7 @@ var Junjo = (function() {
     : function(fn) { setTimeout(fn, 0) };
 
   var is_arguments = function(v) { return v && v.callee };
+  var SHIFT = 'shift';
 
   /** preparation for private properties **/
 
@@ -91,8 +92,8 @@ var Junjo = (function() {
     },
 
     firstError : {
-      get : function() { return !!_(this).firstError },
-      set : function(v) { if (typeof v == 'boolean') _(this).firstError = v }
+      get : function() { return _(this).firstError },
+      set : function(v) { if (typeof v == 'boolean' || v == SHIFT) _(this).firstError = v }
     },
 
     callback : {
@@ -397,8 +398,9 @@ var Junjo = (function() {
     return this;
   };
 
-  $Fn.prototype.firstError = function(bool) {
-    _(this).firstError = (bool !== false);
+  $Fn.prototype.firstError = function(val) {
+    if (val != SHIFT && val !== false) val = true;
+    _(this).firstError = val;
     return this;
   };
 
@@ -625,8 +627,12 @@ var Junjo = (function() {
   var jNext = function(succeeded, result, skipFailCheck) {
     var _this = _(this), $this = $(this), _junjo = _(this.junjo);
     if ($this.cb_called) return;
-    if (jInheritValue.call(this, 'firstError') && !skipFailCheck && result && is_arguments(result) && result[0])
-      return jFail.call(this, result[0]);
+
+    var fsterr = jInheritValue.call(this, 'firstError');
+    if (fsterr && is_arguments(result)) {
+      if (result[0] && !skipFailCheck) return jFail.call(this, result[0]);
+      if (fsterr == SHIFT) A.shift.call(result);
+    }
 
     $this.cb_called = true;
     if ($this.timeout_id) clearTimeout($this.timeout_id); // remove tracing callback
@@ -643,8 +649,6 @@ var Junjo = (function() {
   };
 
   Junjo.multi = function() { return arguments };
-
-  // Object.freeze(Junjo);
   return Junjo;
 })();
 

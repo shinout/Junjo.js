@@ -1,10 +1,10 @@
 var node = (typeof exports == 'object' && exports === this);
 
-function asyncMethod(name, n, cb) {
+function asyncMethod(name, n, cb, e) {
   consolelog(name);
   setTimeout(function() {
     consolelog('\t' + name + ' + ' + n + ' [sec]');
-    cb(null, name);
+    cb(e || null, name);
   }, n);
 }
 

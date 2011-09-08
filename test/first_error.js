@@ -71,14 +71,6 @@ function junjo_test() {
     consolelog("END");
   });
 
-  jj.on('success', function() {
-    consolelog("success");
-  });
-
-  jj.on('error', function() {
-    consolelog("error end");
-  });
-
   jj.run();
 }
 
