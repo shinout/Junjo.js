@@ -351,10 +351,10 @@ var Junjo = (function() {
 
     // private properties
     props[this.id] = {
-      func         : fn,                  // registered function
-      callbacks    : [],                  // callback functions called in jNext
-      afters       : [],                  // labels of functions executed before this function
-      params       : []                   // parameters to be given to the function. if empty, original callback arguments is used.
+      func         : fn, // registered function
+      callbacks    : [], // callback functions called in jNext
+      afters       : [], // labels of functions executed before this function
+      params       : []  // parameters to be given to the function. if empty, original callback arguments is used.
     };
   };
 
@@ -574,12 +574,12 @@ var Junjo = (function() {
     if (_this.params.length) $this.args = Junjo.args(_this.params, this);
 
     try {
-      if ($this.skipped != null) return jNext.call(this, true, $this.skipped, true); // ignore firstError
+      if ($this.skipped != null) return jNext.call(this, $this.skipped, true); // ignore firstError
 
       var ret = _this.func.apply(_this.scope || this, $this.args); // execution
       $this.done = true;
       if (isSync(this)) {
-        return jNext.call(this, true, ret);
+        return jNext.call(this, ret);
       }
       else {
         if ($this.cb_attempted) return jCallback.apply(this, $this.cb_attempted);
@@ -607,7 +607,7 @@ var Junjo = (function() {
     if ($(this).cb_called) return;
 
     var result = jInheritValue.call(this, 'catcher').call(this, e, $(this).args);
-    return jNext.call(this, !!result, result, true); // pass the third arg to avoid infinite loop
+    return jNext.call(this, result, true); // pass the second arg to avoid infinite loop
   };
 
   var jInheritValue = function(keyname) {
@@ -620,11 +620,11 @@ var Junjo = (function() {
     if ($this.cb_called) return;
     if (!$this.done) return $this.cb_attempted = arguments;
 
-    return jNext.call(this, true, arguments);
+    return jNext.call(this, arguments);
   };
 
   // call next functions
-  var jNext = function(succeeded, result, skipFailCheck) {
+  var jNext = function(result, skipFailCheck) {
     var _this = _(this), $this = $(this), _junjo = _(this.junjo);
     if ($this.cb_called) return;
 
@@ -638,8 +638,6 @@ var Junjo = (function() {
     if ($this.timeout_id) clearTimeout($this.timeout_id); // remove tracing callback
 
     setResult.call(this.junjo, this, result);
-    if (!succeeded) _this.callbacks.forEach(function($fn) { this.junjo.skip($fn.label()) }, this);
-
     _this.callbacks.forEach(function($fn) { jExecute.apply($fn) });
   };
 

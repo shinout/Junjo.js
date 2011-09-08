@@ -253,7 +253,6 @@ umecob.run = function(params) {
   .fail(function(e) {
     console.log(e.stack);
     $j.terminate();
-    return false;
   });
 
   $j('tpl_getter', function(params) {
