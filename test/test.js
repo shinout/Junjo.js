@@ -25,9 +25,9 @@ function junjo_test() {
   $j('scoperr', function() {
     this.scope({});
 
-  }).fail(function(e, jfn) {
+  }).fail(function(e, args) {
     console.log("fail test");
-    console.log(jfn.label() + " occurred an error -> " + e.message);
+    console.log(this.label() + " occurred an error -> " + e.message);
     return true;
   });
 
@@ -47,9 +47,9 @@ function junjo_test() {
     this.afterAbove('nodecberr');
   });
 
-  $j.catchesAbove(function(e, jfn) {
+  $j.catchesAbove(function(e, args) {
     // console.error(e.stack);
-    console.error(e.message + ' from ' + jfn.label());
+    console.error(e.message + ' from ' + this.label());
     return true;
   });
 
@@ -145,8 +145,8 @@ function junjo_test() {
     asyncMethod(this.label(), 35, this.callback);
   }).afterAbove();
 
-  $j.catchesAbove(function(e, jfn) {
-    consolelog(e.message, jfn.label());
+  $j.catchesAbove(function(e, args) {
+    consolelog(e.message, this.label());
 		return true;
   });
 

@@ -16,7 +16,7 @@ function junjo_test() {
     asyncMethod(this.label(), 20, this.callback);
   });
 
-  jj.catchesAbove(function(e, jfn) {
+  jj.catchesAbove(function(e, args) {
     console.log(e.message + " (catchesAbove)");
     return true;
   });

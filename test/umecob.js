@@ -210,7 +210,7 @@ umecob.run = function(params) {
     this.shared.params = params;
     return params.starts.filter(function(fn) { return typeof fn == 'function' });
   })
-  .fail(function(e) { return [[]] });
+  .fail(function(e) { return [] });
 
   $j('starts', function(starts) {
     starts.forEach(function(fn) {
@@ -271,7 +271,7 @@ umecob.run = function(params) {
   })
   .nodeCallback(true)
   .after('inputValidator')
-  .fail(function(e, $fn) {
+  .fail(function(e, args) {
     this.out = e.message;
     $j.terminate();
   })
@@ -293,7 +293,7 @@ umecob.run = function(params) {
   })
   .nodeCallback(true)
   .after('inputValidator')
-  .fail(function(e, $fn) {
+  .fail(function(e, args) {
     this.out = e.message;
     $j.terminate();
   })

@@ -82,11 +82,10 @@ var Junjo = (function() {
     },
 
     defaultCatcher : {
-      value : function(e, $fn) {
-        console.error(e.stack || e.message || e);
+      value : function(e, args) {
+        console.log(e.stack || e.message || e);
         this.err = e;
-        $fn.junjo.terminate();
-        return false;
+        this.junjo.terminate();
       },
       writable : false
     },
@@ -605,7 +604,7 @@ var Junjo = (function() {
   var jFail = function(e, called) {
     if ($(this).cb_called) return;
 
-    var result = jInheritValue.call(this, 'catcher').call(this.junjo.commons, e, this);
+    var result = jInheritValue.call(this, 'catcher').call(this, e, $(this).args);
     return jNext.call(this, !!result, result, true); // pass the third arg to avoid infinite loop
   };
 
