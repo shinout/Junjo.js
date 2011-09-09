@@ -282,7 +282,8 @@ var Junjo = (function() {
   };
 
   // JSDeferred-like API
-  Junjo.prototype.next = function(fn, options) {
+  Junjo.prototype.next = function(j, options) {
+    if (j.constructor == Junjo) return j.after(this);
     return new Junjo(fn, options).after(this);
   };
 
