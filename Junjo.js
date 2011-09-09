@@ -559,9 +559,12 @@ var Junjo = (function() {
 
   $Fn.prototype.absorbData = function(emitter, evtname, name) {
     if (!this.junjo.running) throw new Error("Cannot call absorbData() before execution.");
+    var $this = $(this);
+    name || (name = $this.emitterCount.toString());
+    $this.absorbs[name] = '';
     return this.absorb(emitter, evtname || 'data', function(data) {
       var $fn = A.pop.call(arguments), result = A.pop.call(arguments);
-      return (!result) ? data.toString() : result + data.toString();
+      return result + data.toString();
     }, name);
   };
   $Fn.prototype.gather = $Fn.prototype.absorbData;
