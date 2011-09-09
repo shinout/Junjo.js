@@ -57,7 +57,7 @@ var Junjo = (function() {
     if (options.after != undefined) _($j).after = !!options.after;
     if (fn) {
 			$j(fn)
-			.next(function() { this.out = (arguments.length == 1) ? arguments[0] : args2arr(arguments) })
+			.next(function() { this.out = (arguments.length == 1) ? arguments[0] : args2arr(arguments) }) // aa
 			.fail(function(e) { this.err = e });
 		}
     if (options.run) { nextTick($j.run.bind($j, options.run)) }
@@ -387,7 +387,8 @@ var Junjo = (function() {
       if ($j.constructor == Junjo) {
         var $this = $(this), cb = this.callback;
         $this.sub = $j;
-        $this.sub.on('end', function() { cb(this.err, this.out) });
+        // $this.sub.on('end', function() {cb($this.sub.commons.err, $this.sub.commons.out)});
+        this.absorbEnd($this.sub, 'sub', true);
         nextTick(function() { $this.sub.run.apply($this.sub, $this.args) });
       }
     }
@@ -494,44 +495,75 @@ var Junjo = (function() {
     }
   };
 
-  $Fn.prototype.emitOn = function(emitter, evtname, newname) {
-    if (!this.junjo.running) throw new Error("Cannot call emitOn() before execution.");
-    var self = this;
+  $Fn.prototype.absorb = function(emitter, evtname, fn, name) {
+    if (!this.junjo.running) throw new Error("Cannot call absorb() before execution.");
+    var self = this, $this = $(this);
+    name || (name = $this.emitterCount.toString());
     emitter.on(evtname, function() {
-      A.unshift.call(arguments, newname || evtname);
-      self.junjo.emit.apply(self.junjo, arguments);
+      try {
+        A.push.call(arguments, $this.absorbs[name], self);
+        var ret = fn.apply(emitter, arguments);
+        if (ret) $this.absorbs[name] = ret;
+      }
+      catch (e) {
+        $this.absorbErr = e;
+      }
     });
-    return this.emitEnd(emitter);
+    return this.absorbEnd(emitter, name);
   };
 
-  $Fn.prototype.emitEnd = function(emitter) {
-    if (!this.junjo.running) throw new Error("Cannot call emitOn() before execution.");
-    var $this = $(this);
-    if ($this.emitters.indexOf(emitter) < 0) {
-      var cb = this.callback;
-      emitter.on('end', function() {
-        var n = $this.emitters.indexOf(emitter);
-        if (n < 0) return;
-        $this.emitters[n] = arguments;
-        if ($this.emitters.every(function(v) {return is_arguments(v)})) nextTick(function() {cb($this.emitters) });
-      });
-      $this.emitters.push(emitter);
+  $Fn.prototype.absorbError = function(emitter, evtname) {
+    if (!this.junjo.running) throw new Error("Cannot call absorbError() before execution.");
+    var self = this, $this = $(this);
+    var err = '';
+    var fn = (typeof arguments[2] == 'function') ? A.splice.call(arguments, 2, 1): function(e) {
+      if (toStr) err += e.toString();
+      else err = e;
     }
+    var name =  arguments[2] || ($this.emitterCount.toString());
+    var toStr = (evtname == 'data' && arguments[3] === undefined) ? true : !! arguments[3];
+
+    emitter.on(evtname || 'error', function() {
+      try {
+        A.push.call(arguments, err, self);
+        fn.apply(emitter, arguments);
+      }
+      catch (e) {
+        err = e;
+      }
+    });
+
+    emitter.on('end', function() {if (err) $this.absorbErr = (typeof err == 'string') ? new Error(err) : err });
+    return this.absorbEnd(emitter, name);
+  };
+
+  $Fn.prototype.absorbEnd = function(emitter, name, isSub) {
+    if (!this.junjo.running) throw new Error("Cannot call absorbEnd() before execution.");
+    if (name == 'sub' && !isSub) throw new Error("name must not be 'sub'.");
+    var $this = $(this);
+    name || (name = $this.emitterCount.toString());
+    $this.emitterCount++;
+    var cb = this.callback;
+    emitter.on('end', function() {
+      if (emitter.constructor == Junjo) {
+        $this.absorbs[name] = arguments[1];
+        if (arguments[0]) $this.absorbErr = arguments[0];
+      }
+      if (--$this.emitterCount > 0) return;
+      var out = (Object.keys($this.absorbs).length == 1) ? $this.absorbs[Object.keys($this.absorbs)[0]] : $this.absorbs;
+      nextTick(function() { cb($this.absorbErr, out) });
+    });
     return this;
   };
 
-  $Fn.prototype.gather = function(emitter, evtname) {
-    evtname || (evtname = 'data');
-    var val = '', cb = this.callback;
-    emitter.on(evtname, function(data) { val += data.toString() });
-    emitter.on('end', function() { cb(val) });
+  $Fn.prototype.absorbData = function(emitter, evtname, name) {
+    if (!this.junjo.running) throw new Error("Cannot call absorbData() before execution.");
+    return this.absorb(emitter, evtname || 'data', function(data) {
+      var $fn = A.pop.call(arguments), result = A.pop.call(arguments);
+      return (!result) ? data.toString() : result + data.toString();
+    }, name);
   };
-
-  $Fn.prototype.emitError = function(emitter, evtname) {
-    if (!this.junjo.running) throw new Error("Cannot call emitOn() before execution.");
-    var self = this;
-    emitter.on(evtname || 'error', function(e) { jFail.bind(self) });
-  };
+  $Fn.prototype.gather = $Fn.prototype.absorbData;
 
   /** private functions of $Fn **/
 
@@ -539,7 +571,9 @@ var Junjo = (function() {
     variables[this.id] = {
       args         : [],                    // arguments passed to this.execute()
       counter      : _(this).afters.length, // until 0, decremented per each call, then execution starts.
-      emitters     : [],                    // event emitters
+      emitterCount : 0,                     // event emitters (name => emitter)
+      absorbs      : {},                    // absorbed data from emitters (name => absorbed data)
+      absorbErr    : null,                  // absorbed error from emitters
       called       : false,                 // execution started or not
       done         : false,                 // execution ended or not
       cb_accessed  : false,                 // whether callback is accessed via "this.callback", this means asynchronous.

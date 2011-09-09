@@ -19,7 +19,7 @@ function junjo_test() {
   });
 
   $j('4th', function(err, out) {
-    console.log(out);
+    console.log(err, this.label(), out);
   }).after('1st');
 
 

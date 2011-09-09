@@ -397,14 +397,7 @@ umecob.render = function(params) {
   var buff = new uBuffer();
   var echo = function(txt) { buff.add(txt) };
 
-  var $j = new Junjo().on('end', function(err, out) {
-    var results = $j.results();
-    Object.keys(results).forEach(function(label) {
-      echo.put(label, unifySyncAsync(results[label]));
-    });
-    this.out = echo.getText();
-  });
-
+  var $j = new Junjo();
   echo.data      = params.data;
   echo.params    = params;
   echo.sync      = params.sync || false;
@@ -414,7 +407,15 @@ umecob.render = function(params) {
   echo.put       = function(i, v) { buff.put(i, v) };
   echo.getText   = function() { return buff.join() };
   echo.getResult = function() {
-    return (echo.sync || !$j.size) ? echo.getText() : $j.run();
+    if (echo.sync || !$j.size) return echo.getText();
+    $j('last', function() {
+      var results = $j.results();
+      Object.keys(results).forEach(function(label) {
+        echo.put(label, unifySyncAsync(results[label]));
+      });
+      this.out = echo.getText();
+    }).afterAbove();
+    return $j.run();
   };
   try {
     return uEval(echo, params.code);
