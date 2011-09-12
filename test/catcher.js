@@ -17,10 +17,10 @@ function junjo_test() {
     asyncMethod(this.label(), 20, this.callback);
   }),
 
-  jj('c1', function(e, args) {
+  jj.catchesAbove(function(e, args) {
     console.log("CATCHING", this.label());
     return true;
-  }).catchesAbove(),
+  }),
 
   jj('3rd', function() {
     asyncMethod(this.label(), 5, this.callback);

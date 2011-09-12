@@ -445,13 +445,6 @@ var Junjo = (function() {
     return this.catches(function() { return args });
   };
 
-  $Fn.prototype.catchesAbove = function() {
-    if (this.junjo.running) throw new Error("Cannot call catchesAbove() during execution.");
-    var func  = _(this).func;
-    this.junjo.remove(this.label()); // delete this object
-    return this.junjo.catchesAbove.call(this.junjo, func);
-  };
-
   $Fn.prototype.scope = function(v) {
     if (v === undefined) return _(this).scope;
     else _(this).scope = v; return this;
