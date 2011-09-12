@@ -35,12 +35,10 @@ var Junjo = (function() {
     // $j extends Junjo.prototype
     if($j.__proto__)
       $j.__proto__ = Junjo.prototype;
-    else 
+    else
       Object.keys(Junjo.prototype).forEach(function(k) { $j[k] = Junjo.prototype[k]; });
 
     Object.defineProperty($j, 'id', { value : ++current_id, writable : false});
-    Object.defineProperty($j, 'commons', {value : {err: null, out: {}, shared: {}}, writable : false});
-    // Object.seal($j.commons);
 
     // private properties
     props[$j.id] = {
@@ -62,6 +60,7 @@ var Junjo = (function() {
 		}
     if (options.run) { nextTick($j.run.bind($j, options.run)) }
     $j.constructor = Junjo;
+    $j.future = new Future($j);
     return $j;
   };
 
@@ -71,6 +70,7 @@ var Junjo = (function() {
     runnable : { get : function () { return $(this).runnable && !$(this).running }, set : empty },
     running  : { get : function () { return $(this).running }, set : empty },
     size     : { get : function () { return _(this).$fns.length }, set : empty },
+    $        : { get : function()  { return this.shared }, set : function(v) { this.shared = v } },
 
     timeout : {
       get : function() { return (_(this).timeout != null) ? _(this).timeout : 5 },
@@ -96,29 +96,8 @@ var Junjo = (function() {
       set : function(v) { if (typeof v == 'boolean' || v == SHIFT) _(this).firstError = v }
     },
 
-    callback : {
-      get: function() {
-        if (this.current) return this.current.callback; // cb_accessed.
-        return new KeyPath(['callback']);
-      },
-      set: empty
-    },
-
-    cb : {
-      get: function() {
-        if (this.current) return this.current.callback; // cb_accessed.
-        return new KeyPath(['callback']);
-      },
-      set: empty
-    },
-
-    label : {
-      get : function () {
-        if (this.current) return _(this.current).label;
-        return new KeyPath(['label'], '_');
-      },
-      set : empty
-    }
+    callback : { get : function() { return this.future.callback }, set : empty },
+    cb       : { get : function() { return this.future.callback }, set : empty },
   });
 
   // Junjo extends Function prototype
@@ -144,29 +123,11 @@ var Junjo = (function() {
     return _this.after ? $fn.after() : $fn;
   };
 
-  ['err', 'out', 'shared'].forEach(function(name) {
-    Junjo.prototype[name] = function() {
-      var kp = new KeyPath(args2arr(arguments), null, this.commons[name]);
-      return (this.running) ? kp.get() : kp;
-    };
-  });
-
-  // get result of each process.
-  Junjo.prototype.results = function(lbl) {
-    var $this = $(this);
-    if (this.running) return (lbl == undefined) ? $this.results : $this.results[lbl];
-     
-    return new KeyPath(args2arr(arguments), null, $this.results);
+  // get results of each process.
+  Junjo.prototype.results = function() {
+    return (!arguments.length) ? $(this).results : KeyPath.get($(this).results, arguments, this);
   };
-
-  Junjo.prototype.args = function() {
-    var $this = $(this);
-    if ($this.running) return $($this.current).args;
-
-    var arr = args2arr(arguments);
-    arr.unshift('args');
-    return new KeyPath(arr, '$');
-  };
+  Junjo.prototype.args = function() { return this.current ? KeyPath.get($(this.current).args, arguments, this.current) : null };
 
   // terminate whole process
   Junjo.prototype.terminate = function() {
@@ -177,9 +138,9 @@ var Junjo = (function() {
   Junjo.prototype.emit = function() {
     var evtname   = A.shift.call(arguments);
     var listeners = _(this).listeners[evtname] || [];
-    var args = arguments, commons = this.commons;
+    var args = arguments, self = this;
     listeners.forEach(function(listener) {
-      nextTick(function() { listener.apply(commons, args) });
+      nextTick(function() { listener.apply(self, args) });
     });
   };
 
@@ -189,7 +150,7 @@ var Junjo = (function() {
       var self = this;
       nextTick(function() {
         // pseudo onEnd
-        fn.call(self.commons, self.commons.err, self.commons.out);
+        fn.call(self, self.err, self.out);
       });
       return;
     }
@@ -278,7 +239,7 @@ var Junjo = (function() {
     $fns.forEach(function($fn) { jExecute.apply($fn, args) });
     finishCheck.call(this);
 
-    return ($(this).ended && _(this).result) ? this.commons.out : this;
+    return ($(this).ended && _(this).result) ? this.out : this;
   };
 
   // JSDeferred-like API
@@ -305,9 +266,9 @@ var Junjo = (function() {
       current      : null,  // pointer to current function
     };
     /** reset common properties **/
-    this.commons.err    = null; // error to pass to the "end" event
-    this.commons.out    = {};   // final output to pass to the "end" event
-    this.commons.shared = {};   // shared values within $fns 
+    this.err    = null; // error to pass to the "end" event
+    this.out    = {};   // final output to pass to the "end" event
+    this.shared = {};   // shared values within $fns 
   };
 
   var setResult = function($fn, result) {
@@ -322,33 +283,48 @@ var Junjo = (function() {
     var _this = _(this), $this = $(this);
     if ($this.finished == _this.$fns.length && !$this.ended) {
       $this.ended = true;
-      this.emit('end', this.commons.err, this.commons.out);
+      this.emit('end', this.err, this.out);
     }
 
   }
 
-  /** private class KeyPath **/
-  var KeyPath = function(arr, type, obj) {
-    this.keypath = arr, this.type = type, this.obj = obj;
+  function Future($j) { this.$j = $j }
+
+  Future.get = function(target, args) {
+    var kp = new KeyPath(target, args, this);
+    return (this.running) ? kp.get() : kp;
   };
 
-  KeyPath.prototype.get = function(obj) {
-    obj = this.obj || obj;
-    switch (this.type) {
-      default  : break;
-      case '_' : obj = _(obj); break;
-      case '$' : obj = $(obj); break;
-    }
-    return this.keypath.reduce(function(o, k) {
+  ['callback', 'cb', 'label'].forEach(function(propname) {
+    Object.defineProperty(Future.prototype, propname, {
+      get: function() { return Future.get.call(this.$j, 'current', [propname]) }, set: empty
+    });
+  });
+
+  ['out', 'err', 'shared', 'args', 'results', 'current'].forEach(function(propname) {
+    Object.defineProperty(Future.prototype, propname, {
+      get: function() { var $j = this.$j;
+        return function future() { return Future.get.call($j, propname, arguments) };
+      },
+      set: empty
+    });
+  });
+
+  function KeyPath(target, args, scope) { this.target = target, this.args = args, this.scope = scope }
+  KeyPath.get = function(target, args, scope) {
+    if (typeof target == 'function') return target.apply(scope, args);
+    return A.reduce.call(args, function(o, k) {
      if (o == null || (typeof o != 'object' && o[k] == null)) return null;
-      return o[k];
-    }, obj);
+     if (typeof o[k] == 'function' && o[k].name == 'future') return o[k]();
+     return o[k];
+    }, target);
   };
+  KeyPath.prototype.get = function() { return KeyPath.get(this.scope[this.target], this.args, this.scope) };
 
   /** private class $Fn **/
   var $Fn = function(fn, junjo) {
     Object.defineProperty(this, 'id', { value : ++current_id, writable : false});
-    Object.defineProperty(this, 'junjo',{ value : junjo, writable: false });
+    Object.defineProperty(this, 'junjo', { value : junjo, writable: false });
 
     // private properties
     props[this.id] = {
@@ -363,8 +339,8 @@ var Junjo = (function() {
   // proxy to properties in Junjo, for enumerablity, not set to $Fn.prototype.
   ['shared', 'err', 'out'].forEach(function(propname) {
     Object.defineProperty($Fn.prototype, propname, {
-      get : function()  { return this.junjo.commons[propname] },
-      set : function(v) { this.junjo.commons[propname] = v }
+      get : function()  { return this.junjo[propname] },
+      set : function(v) { this.junjo[propname] = v }
     });
   });
 
@@ -388,7 +364,7 @@ var Junjo = (function() {
       if ($j.constructor == Junjo) {
         var $this = $(this), cb = this.callback;
         $this.sub = $j;
-        // $this.sub.on('end', function() {cb($this.sub.commons.err, $this.sub.commons.out)});
+        // $this.sub.on('end', function() {cb($this.sub.err, $this.sub.out)});
         this.absorbEnd($this.sub, 'sub', true);
         nextTick(function() { $this.sub.run.apply($this.sub, $this.args) });
       }
@@ -481,7 +457,7 @@ var Junjo = (function() {
     else _(this).scope = v; return this;
   };
 
-  $Fn.prototype.label = function(v) {
+  $Fn.prototype.label = function future(v) {
     if (arguments.length == 0) return _(this).label;
     else {
       if (v === undefined) return this;
@@ -681,7 +657,9 @@ var Junjo = (function() {
 
   /** static functions **/
   Junjo.args = function(args, obj) {
-    return A.map.call(args, function(v) { return (v instanceof KeyPath) ? v.get(obj) : v });
+    return A.map.call(args, function(v) {
+      return (v instanceof KeyPath) ? v.get(obj) : (typeof v == 'function' && v.name == 'future') ? v() : v;
+    });
   };
 
   Junjo.multi = function() { return arguments };

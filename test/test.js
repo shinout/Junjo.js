@@ -6,7 +6,7 @@ function junjo_test() {
   var $j = new Junjo();
 
 	$j.register = function() {
-		console.log("===== override register ======");
+		console.blue("===== override register ======");
 		return Junjo.prototype.register.apply(this, arguments);
 	}
 
@@ -49,7 +49,7 @@ function junjo_test() {
 
   $j.catchesAbove(function(e, args) {
     // console.error(e.stack);
-    console.error(e.message + ' from ' + this.label());
+    console.cyan(e.message + ' from ' + this.label());
     return true;
   });
 
@@ -62,11 +62,9 @@ function junjo_test() {
   });
 
   $j('2nd', function() {
-    console.log($j.current);
     asyncMethod($j.current.label(), 20, $j.current.cb);
-    console.log("commons", $j.commons.shared.hoge);
-    console.log(this.hoge);
-    $j.commons.shared.abc = "ABC";
+    console.log($j.current.shared.hoge);
+    $j.shared.abc = "ABC";
   }).scope({hoge: 'FugaFuga'});
 
   $j.async('3rd', function() {
@@ -90,9 +88,9 @@ function junjo_test() {
     asyncMethod(this.label(), 20, this.cb);
   }).after('1st', '2nd');
 
-  $j('6th', syncMethod).params($j.label).after('4th');
+  $j('6th', syncMethod).params('6th').after('4th');
 
-  $j('7th', asyncMethod).params($j.label, 100, $j.cb).after();
+  $j('7th', asyncMethod).params('7th', 100, $j.cb).after();
 
   $j.remove('del');
   console.log("--------- del test----------");
@@ -108,10 +106,10 @@ function junjo_test() {
     this.cb(null, this.label() + " but synchronous"); // calling synchronously
   }).after('5th');
 
-  $j.sync('9th', syncMethod).params($j.label).after('5th');
+  $j.sync('9th', syncMethod).params('9th').after('5th');
 
-  $j.sync(syncMethod).params($j.args(0)).after('9th');
-  $j.sync(syncMethod).params($j.results('9th')).after('9th')
+  $j.sync(syncMethod).params($j.future.args(0)).after('9th');
+  $j.sync(syncMethod).params($j.future.results('9th')).after('9th')
   .next('10th', function() {
     return syncMethod(this.label() + " using next()");
   });
@@ -146,7 +144,7 @@ function junjo_test() {
   }).afterAbove();
 
   $j.catchesAbove(function(e, args) {
-    consolelog(e.message, this.label());
+    console.red(e.message, this.label());
 		return true;
   });
 
