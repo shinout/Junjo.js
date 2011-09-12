@@ -220,12 +220,6 @@ var Junjo = (function(isNode) {
     return new Junjo(j, options).after(this);
   };
 
-  Junjo.prototype.fail = function(fn) {
-    var $j = new Junjo();
-    $j(function(e, o) { if (e) fn.call(this, e, o) });
-    return $j.after(this);
-  };
-
   /** private functions **/
 
   var resetState = function() {
