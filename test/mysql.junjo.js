@@ -42,7 +42,7 @@ function junjo_test() {
     this.shared.num = num;
   });
 
-  $query('select * from ' + TBL_NAME + ' limit %s,1', $j.shared('num')).label('select');
+  $query('select * from ' + TBL_NAME + ' limit %s,1', $j.future.shared('num')).label('select');
 
   $result(function(err, records, fields) {
     if (!records[0]) throw new Error();
