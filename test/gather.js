@@ -10,10 +10,11 @@ function junjo_test() {
   $j(function() {
     var grep = spawn('grep', ['child', __filename]);
     this.gather(grep.stdout);
-  });
+  })
+  .firstError('shift');
 
   $j(function(val) {
-    console.log(val);
+    console.green(val);
   }).after();
 
   $j.run();
