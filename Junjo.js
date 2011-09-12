@@ -1,21 +1,13 @@
-var Junjo = (function() {
+var Junjo = (function(isNode) {
   // "use strict"; // commented out because of is_arguments()
-
+ 
   /** utility functions, variables **/
-  var A = Array.prototype;
-
-  var empty = function() {};
-
-  var args2arr = function(args) {
-    return A.map.call(args, function(v) {return v });
-  };
-
-  var nextTick = (typeof process == 'object' && typeof process.nextTick == 'function')
-    ? process.nextTick
-    : function(fn) { setTimeout(fn, 0) };
-
-  var is_arguments = function(v) { return v && v.callee };
-  var SHIFT = 'shift';
+  var A            = Array.prototype,
+      empty        = function() {},
+      args2arr     = function(args) { return A.map.call(args, function(v) {return v }) },
+      nextTick     = (isNode) ? process.nextTick : function(fn) { setTimeout(fn, 0) },
+      is_arguments = function(v) { return v && v.callee },
+      SHIFT        = 'shift';
 
   /** preparation for private properties **/
 
@@ -653,9 +645,9 @@ var Junjo = (function() {
       return (v instanceof KeyPath) ? v.get(obj) : (typeof v == 'function' && v.name == 'future') ? v() : v;
     });
   };
-
+  Junjo.isNode = isNode;
   Junjo.multi = function() { return arguments };
   return Junjo;
-})();
+})(typeof exports == 'object' && exports === this);
 
-if (typeof exports == 'object' && exports === this) module.exports = Junjo;
+if (Junjo.isNode) module.exports = Junjo;
