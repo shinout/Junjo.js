@@ -237,7 +237,7 @@ var Junjo = (function(isNode) {
   // JSDeferred-like API
   Junjo.prototype.next = function(j, options) {
     if (j.constructor == Junjo) return j.after(this);
-    return new Junjo(fn, options).after(this);
+    return new Junjo(j, options).after(this);
   };
 
   Junjo.prototype.fail = function(fn) {
