@@ -43,14 +43,10 @@ var Junjo = (function(isNode) {
     ['timeout', 'catcher', 'firstError'].forEach(function(k) { $j[k] = options[k] });
     if (options.result != undefined) _($j).result = !!options.result;
     if (options.after  != undefined) _($j).after  = !!options.after;
-    if (fn) {
-			$j(fn)
-			.next(function() { this.out = (arguments.length == 1) ? arguments[0] : args2arr(arguments) }) // aa
-			.fail(function(e) { this.err = e });
-		}
     if (options.run) { nextTick($j.run.bind($j, options.run)) }
     $j.constructor = Junjo;
     $j.future = new Future($j);
+    if (fn) $j(fn);
     return $j;
   };
 
@@ -245,9 +241,9 @@ var Junjo = (function(isNode) {
       current      : null,  // pointer to current function
     };
     /** reset common properties **/
-    this.err    = null; // error to pass to the "end" event
-    this.out    = {};   // final output to pass to the "end" event
-    this.shared = {};   // shared values within $fns 
+    this.err    = null;      // error to pass to the "end" event
+    this.out    = new empty; // final output to pass to the "end" event
+    this.shared = {};        // shared values within $fns
   };
 
   var setResult = function($fn, result) {
@@ -260,12 +256,11 @@ var Junjo = (function(isNode) {
 
   var finishCheck = function() {
     var _this = _(this), $this = $(this);
-    if ($this.finished == _this.$fns.length && !$this.ended) {
-      $this.ended = true;
-      this.emit('end', this.err, this.out);
-    }
-
-  }
+    if ($this.finished < _this.$fns.length || $this.ended) return;
+    $this.ended = true;
+    if (this.out instanceof empty && !Object.keys(this.out).length) this.out = $this.results;
+    this.emit('end', this.err, this.out);
+  };
 
   function Future($j) { this.$j = $j }
   Future.get = function(target, args) {

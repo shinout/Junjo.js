@@ -36,4 +36,7 @@ function junjo_test() {
   }).after('2nd', '3rd');
 
   $j.run();
+  $j.next(function() {
+    console.log($j.out);
+  });
 }
