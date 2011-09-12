@@ -259,38 +259,6 @@ var Junjo = (function(isNode) {
     this.emit('end', this.err, this.out);
   };
 
-  function Future($j) { this.$j = $j }
-  Future.get = function(target, args) {
-    var kp = new KeyPath(target, args, this);
-    return (this.running) ? kp.get() : kp;
-  };
-
-  ['callback', 'cb', 'label'].forEach(function(propname) {
-    Object.defineProperty(Future.prototype, propname, {
-      get: function() { return Future.get.call(this.$j, 'current', [propname]) }, set: empty
-    });
-  });
-
-  ['out', 'err', 'shared', '$', 'args', 'results', 'current'].forEach(function(propname) {
-    Object.defineProperty(Future.prototype, propname, {
-      get: function() { var $j = this.$j;
-        return function future() { return Future.get.call($j, propname, arguments) };
-      },
-      set: empty
-    });
-  });
-
-  function KeyPath(target, args, scope) { this.target = target, this.args = args, this.scope = scope }
-  KeyPath.get = function(target, args, scope) {
-    if (typeof target == 'function') return target.apply(scope, args);
-    return A.reduce.call(args, function(o, k) {
-     if (o == null || (typeof o != 'object' && o[k] == null)) return null;
-     if (typeof o[k] == 'function' && o[k].name == 'future') return o[k]();
-     return o[k];
-    }, target);
-  };
-  KeyPath.prototype.get = function() { return KeyPath.get(this.scope[this.target], this.args, this.scope) };
-
   /** private class $Fn **/
   var $Fn = function(fn, junjo) {
     Object.defineProperty(this, 'id', { value : ++current_id, writable : false});
@@ -632,6 +600,38 @@ var Junjo = (function(isNode) {
     setResult.call(this.junjo, this, result);
     _this.callbacks.forEach(function($fn) { jExecute.apply($fn) });
   };
+
+  function Future($j) { this.$j = $j }
+  Future.get = function(target, args) {
+    var kp = new KeyPath(target, args, this);
+    return (this.running) ? kp.get() : kp;
+  };
+
+  ['callback', 'cb', 'label'].forEach(function(propname) {
+    Object.defineProperty(Future.prototype, propname, {
+      get: function() { return Future.get.call(this.$j, 'current', [propname]) }, set: empty
+    });
+  });
+
+  ['out', 'err', 'shared', '$', 'args', 'results', 'current'].forEach(function(propname) {
+    Object.defineProperty(Future.prototype, propname, {
+      get: function() { var $j = this.$j;
+        return function future() { return Future.get.call($j, propname, arguments) };
+      },
+      set: empty
+    });
+  });
+
+  function KeyPath(target, args, scope) { this.target = target, this.args = args, this.scope = scope }
+  KeyPath.get = function(target, args, scope) {
+    if (typeof target == 'function') return target.apply(scope, args);
+    return A.reduce.call(args, function(o, k) {
+     if (o == null || (typeof o != 'object' && o[k] == null)) return null;
+     if (typeof o[k] == 'function' && o[k].name == 'future') return o[k]();
+     return o[k];
+    }, target);
+  };
+  KeyPath.prototype.get = function() { return KeyPath.get(this.scope[this.target], this.args, this.scope) };
 
   /** static functions **/
   Junjo.args = function(args, obj) {
