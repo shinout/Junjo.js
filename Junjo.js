@@ -207,10 +207,7 @@ var Junjo = (function(isNode) {
     Object.freeze(_(this));
 
     var args = arguments, $fns = _(this).$fns;
-    $fns.forEach(function($fn) {
-      Object.freeze(_($fn));
-      jResetState.call($fn);
-    });
+    $fns.forEach(function($fn) { Object.freeze(_($fn)), jResetState.call($fn) });
     $fns.forEach(function($fn) { jExecute.apply($fn, args) });
     finishCheck.call(this);
 
@@ -418,6 +415,13 @@ var Junjo = (function(isNode) {
     return this.catches(function() { return args });
   };
 
+  $Fn.prototype.retry = function(n, fn, nextTick) {
+    n  = (typeof n  == "number") ? n : 1;
+    fn = (typeof fn == "function") ? fn : function(e, args) { return args };
+    _(this).retry = { fn: fn, count: n, nextTick: !!nextTick };
+    return this;
+  };
+
   $Fn.prototype.scope = function(v) {
     if (v === undefined) return _(this).scope;
     else _(this).scope = v; return this;
@@ -585,8 +589,16 @@ var Junjo = (function(isNode) {
 
   var jFail = function(e, called) {
     if ($(this).cb_called) return;
+    var $this = $(this), self = this;
+    var retry = _(this).retry;
+    if (retry && retry.count-- != 0) {
+      jResetState.call(this);
+      var args = retry.fn.call(this, e, $this.args);
+      if (!is_arguments(args)) args = [args];
+      return (retry.nextTick) ? nextTick(function() {jExecute.apply(self, args)}) : jExecute.apply(this, args);
+    }
 
-    var result = jInheritValue.call(this, 'catcher').call(this, e, $(this).args);
+    var result = jInheritValue.call(this, 'catcher').call(this, e, $this.args);
     return jNext.call(this, result, true); // pass the second arg to avoid infinite loop
   };
 
