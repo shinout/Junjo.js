@@ -19,14 +19,14 @@ function junjo_test() {
   var $j = new Junjo({
     firstError   : true,
     timeout      : 3,
-    catcher      : function(e, jfn) {
-      console.error(jfn.label());
-      return j.defaultCatcher(e, jfn);
+    catcher      : function(e, args) {
+      console.error(this.label());
+      return $j.defaultCatcher.call(this, e, args);
     }
   });
 
   $j.getResult = function(jfn) {
-    var result = $j.results(jfn.label(), 1);
+    var result = $j.future.results(jfn.label(), 1);
     var ret = function() {
       var args = arguments;
       var next_jfn = $j(function() {
