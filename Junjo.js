@@ -84,7 +84,7 @@ var Junjo = (function() {
 
     defaultCatcher : {
       value : function(e, args) {
-        console.log(e.stack || e.message || e);
+        console.log('ERROR in label ' + this.label(), e.stack || e.message || e);
         this.err = e;
         this.junjo.terminate();
       },
@@ -289,7 +289,6 @@ var Junjo = (function() {
   }
 
   function Future($j) { this.$j = $j }
-
   Future.get = function(target, args) {
     var kp = new KeyPath(target, args, this);
     return (this.running) ? kp.get() : kp;
