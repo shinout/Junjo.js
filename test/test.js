@@ -58,13 +58,13 @@ function junjo_test() {
     console.log("--------------[COUNT : " + count + "]------------------");
     this.out.count = ++count;
     asyncMethod(this.label(), 10, this.cb);
-    this.shared.hoge = "HogeHoge";
+    this.$.hoge = "HogeHoge";
   });
 
   $j('2nd', function() {
     asyncMethod($j.current.label(), 20, $j.current.cb);
-    console.log($j.current.shared.hoge);
-    $j.shared.abc = "ABC";
+    console.log($j.current.$.hoge);
+    $j.$.abc = "ABC";
   }).scope({hoge: 'FugaFuga'});
 
   $j.async('3rd', function() {

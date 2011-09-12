@@ -301,7 +301,7 @@ var Junjo = (function() {
     });
   });
 
-  ['out', 'err', 'shared', 'args', 'results', 'current'].forEach(function(propname) {
+  ['out', 'err', 'shared', '$', 'args', 'results', 'current'].forEach(function(propname) {
     Object.defineProperty(Future.prototype, propname, {
       get: function() { var $j = this.$j;
         return function future() { return Future.get.call($j, propname, arguments) };
@@ -337,7 +337,7 @@ var Junjo = (function() {
 
   // public properties
   // proxy to properties in Junjo, for enumerablity, not set to $Fn.prototype.
-  ['shared', 'err', 'out'].forEach(function(propname) {
+  ['shared', '$', 'err', 'out'].forEach(function(propname) {
     Object.defineProperty($Fn.prototype, propname, {
       get : function()  { return this.junjo[propname] },
       set : function(v) { this.junjo[propname] = v }
