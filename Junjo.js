@@ -8,6 +8,7 @@ var Junjo = (function(isNode) {
       nextTick     = (isNode) ? process.nextTick : function(fn) { setTimeout(fn, 0) },
       is_arguments = function(v) { return v && v.callee },
       SHIFT        = 'shift';
+      getSubFunc   = function($j) { return function() { this.sub = $j } };
 
   /** preparation for private properties **/
 
@@ -98,7 +99,7 @@ var Junjo = (function(isNode) {
     var label = (typeof arguments[0] != 'function') ? A.shift.call(arguments) : undefined;
     if (arguments[0].constructor == Junjo) {
       $j = arguments[0];
-      return this.register(label, function() { this.sub = $j });
+      return this.register(label, getSubFunc($j));
     }
 
     var $fn   = new $Fn(arguments[0], this);
