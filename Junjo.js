@@ -494,11 +494,13 @@ var Junjo = (function(isNode) {
       cb_accessed  : false,                 // whether callback is accessed via "this.callback", this means asynchronous.
       cb_called    : false                  // whether callback is called or not.
     };
+    if (!prevState) return;
+    Object.keys(prevState).forEach(function(k) { variables[this.id][k] = prevState[k] }, this);
   }
 
-  var jExecute = function(args, prevState) {
+  var jExecute = function(args, prevState, force) {
     var _this  = _(this), label = _this.label, $junjo = $(this.junjo);
-    if ($junjo.counters[label]-- > 0 || $junjo.called[label]) return;
+    if ($junjo.counters[label]-- > 0 || ($junjo.called[label] && !force)) return;
 
     $junjo.current = this, $junjo.called[label] = true;
     jResetState.call(this, prevState);
@@ -549,12 +551,16 @@ var Junjo = (function(isNode) {
   var jFail = function(e, called) {
     if ($(this).cb_called) return;
     var $this = $(this), self = this;
-    var retry = _(this).retry;
-    if (retry && retry.count-- != 0) {
-      jResetState.call(this);
-      var args = retry.fn.call(this, e, $this.args);
-      if (!is_arguments(args)) args = [args];
-      return (retry.nextTick) ? nextTick(function() {jExecute.call(self, args)}) : jExecute.call(this, args);
+    var _retry = _(this).retry;
+    if (_retry) {
+      if (!$this.trial) $this.trial = 0;
+      if ($this.trial++ != _retry.count) {
+        var args = _retry.fn.call(this, e, $this.args);
+        if (!is_arguments(args)) args = [args];
+        return (_retry.nextTick)
+          ? nextTick(function() {jExecute.call(self, args, {trial: $this.trial}, true)})
+          : jExecute.call(this, args, {trial: $this.trial}, true);
+      }
     }
 
     var result = jInheritValue.call(this, 'catcher').call(this, e, $this.args);
