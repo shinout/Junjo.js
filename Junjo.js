@@ -389,6 +389,14 @@ var Junjo = (function(isNode) {
     return this;
   };
 
+  $Fn.prototype.loop = function(val, nextTick) {
+    var _this = _(this);
+    if (typeof val == 'number') _this.loop = function(a, r, c) { return c < val };
+    else if (typeof val == 'function') _this.loop = val;
+    _this.loop.nextTick = !!nextTick;
+    return this;
+  };
+
   $Fn.prototype.scope = function(v) {
     if (v === undefined) return _(this).scope;
     else _(this).scope = v; return this;
@@ -521,24 +529,29 @@ var Junjo = (function(isNode) {
     try {
       if ($junjo.skips[label] != null) return jNext.call(this, $junjo.skips[label], true); // ignore firstError
 
+      if (_this.loop) {
+        if (!$this.loop) $this.loop = { result: null, count: 0};
+        var l = $this.loop;
+        l.args = args ? args.map(function(v) {return v}) : null;
+        $this.args.push(l.result, l.count);
+        l.finished = !_this.loop.call(this, l.args, l.result, l.count);
+        if (l.finished) return jNext.call(this, l.result);
+      }
+
       var ret = _this.func.apply(_this.scope || this, $this.args); // execution
       $this.done = true;
-      if (isSync(this)) {
-        return jNext.call(this, ret);
-      }
-      else {
-        if ($this.cb_attempted) return jCallback.apply(this, $this.cb_attempted);
-        if (!jInheritValue.call(this, 'timeout')) return;
+      if (isSync(this)) return jNext.call(this, ret);
+      if ($this.cb_attempted) return jCallback.apply(this, $this.cb_attempted);
+      if (!jInheritValue.call(this, 'timeout')) return;
 
-        var self = this;
-        var timeout = jInheritValue.call(this, 'timeout');
-        $this.timeout_id = setTimeout(function() {
-          if (!$this.cb_called) {
-            $this.done = true;
-            jFail.call(self, new Error('callback wasn\'t called within '+ timeout +' [sec] in function ' + self.label() + '.' ));
-          }
-        }, timeout * 1000);
-      }
+      var self = this;
+      var timeout = jInheritValue.call(this, 'timeout');
+      $this.timeout_id = setTimeout(function() {
+        if (!$this.cb_called) {
+          $this.done = true;
+          jFail.call(self, new Error('callback wasn\'t called within '+ timeout +' [sec] in function ' + self.label() + '.' ));
+        }
+      }, timeout * 1000);
     }
     catch (e) {
       $this.done = true;
@@ -594,6 +607,13 @@ var Junjo = (function(isNode) {
     $this.cb_called = true;
     if ($this.timeout_id) clearTimeout($this.timeout_id); // remove tracing callback
 
+    if ($this.loop && !$this.loop.finished) {
+      var l = $this.loop, args = l.args;
+      l.count++, l.result = result;
+      return (_this.loop.nextTick)
+        ? nextTick(function() { jExecute.call(self, args, {loop: l}, true) })
+        : jExecute.call(this, args, {loop: l}, true);
+    }
     setResult.call(this.junjo, this, result);
     _this.callbacks.forEach(function($fn) { jExecute.call($fn) });
   };
