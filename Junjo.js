@@ -194,21 +194,23 @@ var Junjo = (function(isNode) {
 
   // skip the process with a given label, and make it return the passed arguments
   Junjo.prototype.skip = function() {
-    var lbl = A.shift.call(arguments), $fn = this.get(lbl), $$fn = $($fn);
-    if ($$fn.called || $$fn.skipped) return;
-    $$fn.skipped = arguments;
+    var lbl = A.shift.call(arguments), $this = $(this);
+    if ($this.skips[lbl] === undefined) $this.skips[lbl] = arguments;
   };
 
    // run all the registered $fn
   Junjo.prototype.run = function() {
     if ($(this).ended) resetState.call(this);
+    var $this = $(this), _this = _(this);
     if (!this.runnable) return this; // checking $this.runnable && !$this.running
-    $(this).running = true;
-    Object.freeze(_(this));
-
-    var args = arguments, $fns = _(this).$fns;
-    $fns.forEach(function($fn) { Object.freeze(_($fn)), jResetState.call($fn) });
-    $fns.forEach(function($fn) { jExecute.apply($fn, args) });
+    $this.running = true;
+    Object.freeze(_this);
+    var args = arguments, $fns = _this.$fns;
+    $fns.forEach(function($fn) {
+      $this.counters[$fn.label()] = _($fn).afters.length;
+      Object.freeze(_($fn));
+    });
+    $fns.forEach(function($fn) { jExecute.call($fn, args2arr(args)) });
     finishCheck.call(this);
 
     return ($(this).ended && _(this).result) ? this.out : this;
@@ -230,6 +232,9 @@ var Junjo = (function(isNode) {
       ended        : false, // emited end event or not
       finished     : 0,     // the number of finished functions
       current      : null,  // pointer to current function
+      skips        : {},    // skipped functions (label => bool)
+      counters     : {},    // counters (label => number)
+      called       : {},    // called functions (label => number)
     };
     /** reset common properties **/
     this.err    = null;      // error to pass to the "end" event
@@ -479,48 +484,40 @@ var Junjo = (function(isNode) {
 
   /** private functions of $Fn **/
 
-  var jResetState = function() {
+  var jResetState = function(prevState) {
     variables[this.id] = {
       args         : [],                    // arguments passed to this.execute()
-      counter      : _(this).afters.length, // until 0, decremented per each call, then execution starts.
       emitterCount : 0,                     // event emitters (name => emitter)
       absorbs      : {},                    // absorbed data from emitters (name => absorbed data)
       absorbErr    : null,                  // absorbed error from emitters
-      called       : false,                 // execution started or not
       done         : false,                 // execution ended or not
       cb_accessed  : false,                 // whether callback is accessed via "this.callback", this means asynchronous.
       cb_called    : false                  // whether callback is called or not.
     };
   }
 
-  var jExecute = function() {
-    var _this  = _(this), $this = $(this), _junjo = _(this.junjo), $junjo = $(this.junjo);
+  var jExecute = function(args, prevState) {
+    var _this  = _(this), label = _this.label, $junjo = $(this.junjo);
+    if ($junjo.counters[label]-- > 0 || $junjo.called[label]) return;
 
-    // filters
-    if ($this.called || $this.counter-- > 0) return; // execute filter
-
-    // preparation
-    $this.called = true;
-    $junjo.current = this;
+    $junjo.current = this, $junjo.called[label] = true;
+    jResetState.call(this, prevState);
+    var $this = $(this);
 
     if (_this.afters.length) {
       $this.args = _this.afters.reduce(function(arr, lbl) {
         var val = $junjo.results[lbl];
-        if (is_arguments(val))
-          A.forEach.call(val, function(v) { arr.push(v) });
-        else
-          arr.push(val);
-
+        if (is_arguments(val)) A.forEach.call(val, function(v) { arr.push(v) });
+        else arr.push(val);
         return arr;
       }, []);
     }
-    else {
-      $this.args = args2arr(arguments);
-    }
+    else $this.args = args;
+    
     if (_this.params.length) $this.args = Junjo.args(_this.params, this);
 
     try {
-      if ($this.skipped != null) return jNext.call(this, $this.skipped, true); // ignore firstError
+      if ($junjo.skips[label] != null) return jNext.call(this, $junjo.skips[label], true); // ignore firstError
 
       var ret = _this.func.apply(_this.scope || this, $this.args); // execution
       $this.done = true;
@@ -557,7 +554,7 @@ var Junjo = (function(isNode) {
       jResetState.call(this);
       var args = retry.fn.call(this, e, $this.args);
       if (!is_arguments(args)) args = [args];
-      return (retry.nextTick) ? nextTick(function() {jExecute.apply(self, args)}) : jExecute.apply(this, args);
+      return (retry.nextTick) ? nextTick(function() {jExecute.call(self, args)}) : jExecute.call(this, args);
     }
 
     var result = jInheritValue.call(this, 'catcher').call(this, e, $this.args);
@@ -592,7 +589,7 @@ var Junjo = (function(isNode) {
     if ($this.timeout_id) clearTimeout($this.timeout_id); // remove tracing callback
 
     setResult.call(this.junjo, this, result);
-    _this.callbacks.forEach(function($fn) { jExecute.apply($fn) });
+    _this.callbacks.forEach(function($fn) { jExecute.call($fn) });
   };
 
   function Future($j) { this.$j = $j }
