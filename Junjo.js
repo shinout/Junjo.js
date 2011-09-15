@@ -525,7 +525,7 @@ var Junjo = (function(isNode) {
     }
     else $this.args = args;
     
-    if (_this.params.length) $this.args = Junjo.args(_this.params, this);
+    if (_this.params.length) $this.args = _this.params.map(Junjo.present);
 
     try {
       if ($junjo.skips[label] != null) return jNext.call(this, $junjo.skips[label], true); // ignore firstError
@@ -652,11 +652,10 @@ var Junjo = (function(isNode) {
   KeyPath.prototype.get = function() { return KeyPath.get(this.scope[this.target], this.args, this.scope) };
 
   /** static functions **/
-  Junjo.args = function(args, obj) {
-    return A.map.call(args, function(v) {
-      return (v instanceof KeyPath) ? v.get(obj) : (typeof v == 'function' && v.name == 'future') ? v() : v;
-    });
+  Junjo.present = function(v) {
+    return (v instanceof KeyPath) ? v.get() : (typeof v == 'function' && v.name == 'future') ? v() : v;
   };
+
   Junjo.isNode = isNode;
   Junjo.multi = function() { return arguments };
   return Junjo;

@@ -22,7 +22,7 @@ function junjo_test() {
     var sql  = Array.prototype.shift.call(arguments);
     var args = arguments;
     return $j(function() {
-      Junjo.args(args).forEach(function(v) { sql = sql.replace('%s', v) });
+      Array.prototype.forEach.call(args, function(v) { sql = sql.replace('%s', Junjo.present(v)) });
       console.log(sql);
       client.query(sql, this.callback);
     });
@@ -62,9 +62,9 @@ function junjo_test() {
   });
 
   // catcher
-  $j.catchesAbove(function(e, jfn) {
+  $j.catchesAbove(function(e, args) {
     console.log(e.stack);
-    console.log("from : " + jfn.label());
+    console.log("from : " + this.label());
     $j.terminate();
   });
 
