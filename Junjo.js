@@ -36,7 +36,7 @@ var Junjo = (function(isNode) {
       $fns         : [],    // registered functions
       labels       : {},    // {label => position of $fns}
       listeners    : {},    // eventlisteners
-      result       : false  // if true and all processes are synchronous, return result at $j.run() (experimental)
+      result       : false  // if true and all processes are synchronous, return result at $j.run()
     };
     resetState.call($j);  // set variables
 
@@ -44,7 +44,7 @@ var Junjo = (function(isNode) {
     ['timeout', 'catcher', 'firstError'].forEach(function(k) { $j[k] = options[k] });
     if (options.result != undefined) _($j).result = !!options.result;
     if (options.after  != undefined) _($j).after  = !!options.after;
-    if (options.run) { nextTick($j.run.bind($j, options.run)) }
+    if (options.run) nextTick(function() { $j.run.apply($j, is_arguments(options.run) ? options.run : [options.run]) });
     $j.constructor = Junjo;
     $j.future = new Future($j);
     if (fn) $j(fn);

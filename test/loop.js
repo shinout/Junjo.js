@@ -4,7 +4,7 @@ if (node) junjo_test();
 // test start
 function junjo_test() {
 
-  var $j = new Junjo({run: true});
+  var $j = new Junjo({run: Junjo.multi("hoge", "fuga")});
 
   $j('1st', function() {
     console.green(arguments);
