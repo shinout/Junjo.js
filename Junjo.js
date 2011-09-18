@@ -192,6 +192,14 @@ var Junjo = (function(isNode) {
     return this;
   };
 
+  // copy this and create new Junjo
+  Junjo.prototype.clone = function() {
+    var $j = new Junjo(), _this = _(this), _that = _($j);
+    Object.keys(_this).forEach(function(k) { _that[k] = _this[k] });
+    _this.$fns.forEach(function($fn, k) { _that.$fns[k] = $fn.clone($j) });
+    return $j;
+  };
+
   // skip the process with a given label, and make it return the passed arguments
   Junjo.prototype.skip = function() {
     var lbl = A.shift.call(arguments), $this = $(this);
@@ -399,6 +407,13 @@ var Junjo = (function(isNode) {
   $Fn.prototype.scope = function(v) {
     if (v === undefined) return _(this).scope;
     else _(this).scope = v; return this;
+  };
+
+  $Fn.prototype.clone = function($j) {
+    var $fn = new $Fn(this.fn, this.label, $j);
+    var _this = _(this), _that = _($fn);
+    Object.keys(_this).forEach(function(k) { _that[k] = _this[k] });
+    return $fn;
   };
 
   $Fn.prototype.absorb = function(emitter, evtname, fn, name) {

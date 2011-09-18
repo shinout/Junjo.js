@@ -1,49 +1,49 @@
 if (typeof global != 'undefined') require('./load.test').load(global);
 if (node) junjo_test();
 
+function asy(color, name, n, cb, e) {
+  console.color(color, name);
+  setTimeout(function() {
+    console.color(color, '\t' + name + ' + ' + n + ' [sec]');
+    cb(e || null, name);
+  }, n);
+}
+
 // test start
 function junjo_test() {
 
   var $j = new Junjo({after: true});
-  console.green($j.id)
-
-  $j('1st', function() {
-    console.purple(this.label());
-    asyncMethod(this.label(), 50, this.callback);
-    this.shared.hoge = "HogeHoge";
+  $j('1st', function(color) {
+    this.$.col = color;
+    asy(this.$.col, this.label, 50, this.callback);
   });
 
   $j('2nd', function() {
-    asyncMethod(this.label(), 10, this.callback);
+    asy(this.$.col, this.label, 1, this.callback);
   });
 
   $j('3rd', function() {
-    asyncMethod(this.label(), 20, this.callback);
+    asy(this.$.col, this.label, 2, this.callback);
   });
 
   $j('4th', function() {
-    asyncMethod(this.label(), 10, this.callback);
+    asy(this.$.col, this.label, 10, this.callback);
   });
 
   $j('5th', function() {
-    asyncMethod(this.label(), 10, this.callback);
+    asy(this.$.col, this.label, 100, this.callback);
   }).after();
 
   $j('6th', function() {
-    asyncMethod(this.label(), 10, this.callback);
+    asy(this.$.col, this.label, 20, this.callback);
   }).after();
 
   $j('7th', function() {
-    asyncMethod(this.label(), 10, this.callback);
+    asy(this.$.col, this.label, 10, this.callback);
   }).after('2nd', '3rd');
 
-  // $j.run();
-  /*
-  $j.next(function() {
-    console.log($j.out);
-  });
-  */
-
-  $j.clone().run();
-  //$j.run();
+  $j.run("green");
+  setTimeout(function() {
+    $j.clone().run("purple");
+  }, 100);
 }
