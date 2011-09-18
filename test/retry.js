@@ -14,7 +14,7 @@ function junjo_test() {
     return n;
   })
   .retry(-1, null, true)
-  .retry(60, function(args, e, count) {
+  .retry(60, function(e, args, count) {
     console.log(count);
     return ++this.$.N;
   })

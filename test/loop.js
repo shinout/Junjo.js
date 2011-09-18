@@ -19,7 +19,7 @@ function junjo_test() {
     console.cyan(arguments);
     asyncMethod(this.label, 200, this.callback);
   })
-  .loop(function(args, result, count) {
+  .loop(function(result, args, count) {
     return count < 10;
   });
 }
