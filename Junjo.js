@@ -7,7 +7,7 @@ var Junjo = (function(isNode) {
       args2arr     = function(args) { return A.map.call(args, function(v) {return v }) },
       nextTick     = (isNode) ? process.nextTick : function(fn) { setTimeout(fn, 0) },
       is_arguments = function(v) { return v && v.callee },
-      SHIFT        = 'shift';
+      SHIFT        = 'shift',
       getSubFunc   = function($j) { return function() { this.sub = $j } };
 
   /** preparation for private properties **/
