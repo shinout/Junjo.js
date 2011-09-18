@@ -567,7 +567,7 @@ var Junjo = (function(isNode) {
     if (_retry) {
       if (!$this.trial) $this.trial = 0;
       if ($this.trial++ != _retry.count) {
-        var args = _retry.fn.call(this, e, $this.args);
+        var args = _retry.fn.call(this, $this.args, e, $this.trial);
         if (!is_arguments(args)) args = [args];
         return (_retry.nextTick)
           ? nextTick(function() {jExecute.call(self, args, {trial: $this.trial}, true)})
