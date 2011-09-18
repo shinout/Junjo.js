@@ -5,7 +5,7 @@ function junjo_test() {
   var jj = new Junjo({ result : true });
 
   jj('1st', function() {
-    return syncMethod(this.label());
+    return syncMethod(this.label);
   });
 
 	jj.catches('1st', function(e) {

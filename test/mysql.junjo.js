@@ -19,18 +19,19 @@ function junjo_test() {
   var $j = new Junjo({ firstError: true });
 
   function $query() {
+    var label = Array.prototype.shift.call(arguments);
     var sql  = Array.prototype.shift.call(arguments);
     var args = arguments;
-    return $j(function() {
+    return $j(label, function() {
       Array.prototype.forEach.call(args, function(v) { sql = sql.replace('%s', Junjo.present(v)) });
       console.log(sql);
       client.query(sql, this.callback);
     });
   }
-  function $result(fn) { return $j(fn).after() }
+  function $result(label, fn) { return $j(label, fn).after() }
 
 
-  $query('use ' + DB_NAME);
+  $query('use', 'use ' + DB_NAME);
 
   $j(function() {
     var num = Number(process.argv[2]);
@@ -42,29 +43,29 @@ function junjo_test() {
     this.shared.num = num;
   });
 
-  $query('select * from ' + TBL_NAME + ' limit %s,1', $j.future.shared('num')).label('select');
+  $query('select', 'select * from ' + TBL_NAME + ' limit %s,1', $j.future.shared('num'));
 
-  $result(function(err, records, fields) {
+  $result('word', function(err, records, fields) {
     if (!records[0]) throw new Error();
     return records[0][COL_NAME];
-  }).label('word');
+  });
 
   $j.catches(function() { return DEFAULT_STR });
 
-  $result(function(word) {
+  $result('get', function(word) {
     var word = word.split(/[をがのはやで、。]/)[0];
     console.log("searching " + word);
     client.query('select * from ' + TBL_NAME + ' where ' + COL_NAME + ' like "%'+ word +'%" limit 5', this.callback);
   });
 
-  $result(function(e, records, f) {
+  $result('log', function(e, records, f) {
     console.log(records);
   });
 
   // catcher
   $j.catchesAbove(function(e, args) {
     console.log(e.stack);
-    console.log("from : " + this.label());
+    console.log("from : " + this.label);
     $j.terminate();
   });
 

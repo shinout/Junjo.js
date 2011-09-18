@@ -6,20 +6,20 @@ function junjo_test() {
   var $j = new Junjo();
 
   $j('1st', function() {
-    syncMethod(this.label());
+    syncMethod(this.label);
     this.sub('2nd', function() {
-      asyncMethod(this.label(), 20, this.cb);
-      this.out[this.label()] = "hoge";
+      asyncMethod(this.label, 20, this.cb);
+      this.out[this.label] = "hoge";
     });
 
     this.sub('3rd', function() {
-      asyncMethod(this.label(), 20, this.cb);
-      this.out[this.label()] = "fuga";
+      asyncMethod(this.label, 20, this.cb);
+      this.out[this.label] = "fuga";
     }).after();
   });
 
   $j('4th', function(err, out) {
-    console.log(err, this.label(), out);
+    console.log(err, this.label, out);
   }).after('1st');
 
 
@@ -28,12 +28,12 @@ function junjo_test() {
 
   $j2('BB', function() {
     console.log(arguments);
-    syncMethod(this.label());
-    this.out[this.label()] = "piyo";
+    syncMethod(this.label);
+    this.out[this.label] = "piyo";
   });
 
   $j('AA', function() {
-    syncMethod(this.label());
+    syncMethod(this.label);
     this.sub = $j2;
   }).next(function(err, out) {
     console.log(out);

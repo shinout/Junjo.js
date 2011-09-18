@@ -20,12 +20,12 @@ function asyncFunc(v, n, callback) {
 var $j = new Junjo();
 
 $j('foo', function() {
-  console.log(this.label());
-  return this.label(); // (%)
+  console.log(this.label);
+  return this.label; // (%)
 });
 
 $j('bar', function() {
-  asyncFunc(this.label(), 40, this.callback);
+  asyncFunc(this.label, 40, this.callback);
 });
 
 
@@ -33,11 +33,11 @@ $j('hoge', function(prev_label, prev_num) { // (3)
   console.log('prev_label : ' + prev_label);
   console.log('prev_num: ' + prev_num);
 
-  asyncFunc(this.label(), 10, this.callback);
+  asyncFunc(this.label, 10, this.callback);
 }).after(); // (1)
 
 $j('fuga', function(lbl1, num1, lbl2) { // (4)
-  asyncFunc(this.label(), 10, this.callback);
+  asyncFunc(this.label, 10, this.callback);
 
   console.log('prev_label1 : ' + lbl1); 
   console.log('prev_num1: ' + num1); 

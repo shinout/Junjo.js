@@ -16,11 +16,11 @@ var $j = new Junjo();
 
 
 $j('hello', function() {
-  return this.label() + ', world';
+  return this.label + ', world';
 });
 
 $j('hi', function() {
-  asyncFunc(this.label(), this.callback);
+  asyncFunc(this.label, this.callback);
 });
 
 $j(function(v1, v2, v3) {

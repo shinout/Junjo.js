@@ -20,13 +20,13 @@ function junjo_test() {
     firstError   : true,
     timeout      : 3,
     catcher      : function(e, args) {
-      console.error(this.label());
+      console.error(this.label);
       return $j.defaultCatcher.call(this, e, args);
     }
   });
 
   $j.getResult = function(jfn) {
-    var result = $j.future.results(jfn.label(), 1);
+    var result = $j.future.results(jfn.label, 1);
     var ret = function() {
       var args = arguments;
       var next_jfn = $j(function() {
@@ -35,7 +35,7 @@ function junjo_test() {
         var fname = Array.prototype.shift.call(args);
         Array.prototype.push.call(args, this.callback);
         obj[fname].apply(obj, args);
-      }).after(jfn.label());
+      }).after(jfn.label);
       return $j.getResult(next_jfn);
     };
     ret.next = function() { jfn.next.apply(jfn, arguments) };

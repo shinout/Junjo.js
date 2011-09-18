@@ -24,7 +24,7 @@ $j('A', function(abc, aiu) { // (1)
 $j('B', function(abc, aiu) {
   console.log(abc, aiu);  // ABCDE, AIUEO
   asyncFunc(
-    this.label(),
+    this.label,
     $j.results('A'),
     aiu,
     this.shared.fuga,
@@ -37,7 +37,7 @@ $j('C', asyncFunc).after()
   $j.label,           // (3-1)
   $j.results('B', 0), // (3-2)
   $j.args(1),         // (3-3)
-  $j.shared('fuga'),  // (3-4)
+  $j.future.shared('fuga'),  // (3-4)
   $j.callback         // (3-5)
 );
 
@@ -76,7 +76,7 @@ Let results object as obj, then this means obj[key1][key2][...] .
 
 3-3. $j.args(N) : the Nth default argument of function fn.
 
-3-4. $j.shared(key1, key2, ...) : let a shared object(explains in a later section) as obj,
+3-4. $j.future.shared(key1, key2, ...) : let a shared object(explains in a later section) as obj,
 then this means obj[key1][key2][...] .
 
 3-5. $j.callback : the same as "this.callback" in function fn.
@@ -99,7 +99,7 @@ after()のある関数へのデフォルトの引数は、after() の項に詳�
 
 3-3. $j.args(N) : その関数へのデフォルトの第N引数。
 
-3-4. $j.shared(key1, key2, ...) : sharedオブジェクト(あとで解説)がobjである場合、
+3-4. $j.future.shared(key1, key2, ...) : sharedオブジェクト(あとで解説)がobjである場合、
 obj[key1][key2][...] の値。
 
 3-5. $j.callback : その関数のthis.callback の値。

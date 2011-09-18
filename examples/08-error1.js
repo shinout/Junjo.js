@@ -5,7 +5,7 @@
 var Junjo = require('../Junjo');
 var $j = new Junjo({
   catcher : function(e, args) { // (6)
-    console.log(this.label() + ' threw an error with a message : "' + e.message + '". I\'m a new default catcher.');
+    console.log(this.label + ' threw an error with a message : "' + e.message + '". I\'m a new default catcher.');
   }
 });
 
@@ -14,7 +14,7 @@ $j('Pitcher01', function() {
 });
 
 $j.catches(function(e, args) { // (1)
-  console.log(this.label() + ' threw an error with a message : "' + e.message + '". I caught it.');
+  console.log(this.label + ' threw an error with a message : "' + e.message + '". I caught it.');
 });
 
 $j('Pitcher02', function() {
@@ -26,7 +26,7 @@ $j('Pitcher03', function() {
 });
 
 $j.catches('Pitcher02', function(e, args) { // (2)
-  console.log(this.label() + ' threw an error with a message : "' + e.message 
+  console.log(this.label + ' threw an error with a message : "' + e.message 
                           + '". I catch an error thrown by Pitcher02.');
 });
 
@@ -35,7 +35,7 @@ $j('Pitcher04', function() {
 });
 
 $j.catchesAbove(function(e, args) { // (3)
-  console.log(this.label() + ' threw an error with a message : "' + e.message 
+  console.log(this.label + ' threw an error with a message : "' + e.message 
                           + '". I caught all the errors occurred above.');
 });
 
@@ -43,7 +43,7 @@ $j('Pitcher05', function() {
   throw new Error('no way!');
 })
 .fail(function(e, args) { // (4)
-  console.log(this.label() + ' threw an error with a message : "' + e.message 
+  console.log(this.label + ' threw an error with a message : "' + e.message 
                           + '". This is the similar way as JSDeferred.');
 });
 
@@ -51,7 +51,7 @@ $j('Pitcher06', function() {
   throw new Error('no way!');
 })
 .catches(function(e, args) { // (5)
-  console.log(this.label() + ' threw an error with a message : "' + e.message 
+  console.log(this.label + ' threw an error with a message : "' + e.message 
                           + '". This is the same as fail().');
 });
 

@@ -76,7 +76,7 @@ var Junjo = (function(isNode) {
 
     defaultCatcher : {
       value : function(e, args) {
-        console.log('ERROR in label ' + this.label(), e.stack || e.message || e);
+        console.log('ERROR in label ' + this.label, e.stack || e.message || e);
         this.err = e;
         this.junjo.terminate();
       },
@@ -101,13 +101,12 @@ var Junjo = (function(isNode) {
       $j = arguments[0];
       return this.register(label, getSubFunc($j));
     }
-
-    var $fn   = new $Fn(arguments[0], this);
     var _this = _(this);
-    var num   = _this.$fns.push($fn) -1;
-    if (label == undefined) label = num;
-    _($fn).label = label;
-    _this.labels[label] = num;
+    if (_this.labels[label]) throw new Error('label ' + label + ' is already exists.');
+    if (label == undefined) { label = _this.$fns.length; while (_this.labels[label]) { label++ } }
+
+    var $fn = new $Fn(arguments[0], label, this);
+    _this.labels[label] = _this.$fns.push($fn) -1;
     return _this.after ? $fn.after() : $fn;
   };
 
@@ -120,7 +119,7 @@ var Junjo = (function(isNode) {
 
   // terminate whole process
   Junjo.prototype.terminate = function() {
-    _(this).$fns.forEach(function($fn) { this.skip($fn.label()) }, this);
+    _(this).$fns.forEach(function($fn) { this.skip($fn.label) }, this);
   };
 
   // emitting event asynchronously. The similar way as EventEmitter in Node.js
@@ -145,7 +144,7 @@ var Junjo = (function(isNode) {
   };
 
   // get $fn by label
-  Junjo.prototype.get = function(lbl) { return _(this).$fns[_(this).labels[lbl]] };
+  Junjo.prototype.get = function(lbl) { var _this = _(this); return _this.$fns[_this.labels[lbl]] };
 
   // remove $fn by label
   Junjo.prototype.remove = function(lbl) {
@@ -155,7 +154,7 @@ var Junjo = (function(isNode) {
     delete _this.labels[lbl];
     D($fn);
     for (var i=num, l=_this.$fns.length; i<l; i++) {
-      _this.labels[_this.$fns[i].label()] = i;
+      _this.labels[_this.$fns[i].label] = i;
     }
     return this;
   };
@@ -208,7 +207,7 @@ var Junjo = (function(isNode) {
     Object.freeze(_this);
     var args = arguments, $fns = _this.$fns;
     $fns.forEach(function($fn) {
-      $this.counters[$fn.label()] = _($fn).afters.length;
+      $this.counters[$fn.label] = _($fn).afters.length;
       Object.freeze(_($fn));
     });
     $fns.forEach(function($fn) { jExecute.call($fn, args2arr(args)) });
@@ -247,7 +246,7 @@ var Junjo = (function(isNode) {
     var $this = $(this);
     $this.finished++;
 
-    $this.results[$fn.label()] = result;
+    $this.results[$fn.label] = result;
     finishCheck.call(this);
   };
 
@@ -260,8 +259,9 @@ var Junjo = (function(isNode) {
   };
 
   /** private class $Fn **/
-  var $Fn = function(fn, junjo) {
+  var $Fn = function(fn, label, junjo) {
     Object.defineProperty(this, 'id', { value : ++current_id, writable : false});
+    Object.defineProperty(this, 'label', { value : label, writable : false});
     Object.defineProperty(this, 'junjo', { value : junjo, writable: false });
 
     // private properties
@@ -349,9 +349,9 @@ var Junjo = (function(isNode) {
 
   $Fn.prototype.after = function() {
     if (this.junjo.running) throw new Error("Cannot call after() while during execution.");
-    var _this = _(this), _junjo = _(this.junjo), lbl = _this.label;
+    var _this = _(this), _junjo = _(this.junjo), lbl = this.label;
     if (arguments.length == 0 && _junjo.labels[lbl] > 0)
-      A.push.call(arguments, _junjo.$fns[_junjo.labels[lbl]-1].label());
+      A.push.call(arguments, _junjo.$fns[_junjo.labels[lbl]-1].label);
 
     A.forEach.call(arguments, function(lbl) {
       var before = _junjo.$fns[_junjo.labels[lbl]];
@@ -366,7 +366,7 @@ var Junjo = (function(isNode) {
   $Fn.prototype.afterAbove = function(bool) {
     if (this.junjo.running) throw new Error("Cannot call afterAbove() while during execution.");
     return this.after.apply(this, _(this.junjo).$fns.map(function($fn) {
-      return $fn.label();
+      return $fn.label;
     }));
   };
 
@@ -375,7 +375,7 @@ var Junjo = (function(isNode) {
   // JSDeferred-like API
   $Fn.prototype.fail = $Fn.prototype.catches;
   $Fn.prototype.next = function() {
-    return this.junjo.register.apply(this.junjo, arguments).after(this.label());
+    return this.junjo.register.apply(this.junjo, arguments).after(this.label);
   };
 
   $Fn.prototype.failSafe = function() {
@@ -401,21 +401,6 @@ var Junjo = (function(isNode) {
   $Fn.prototype.scope = function(v) {
     if (v === undefined) return _(this).scope;
     else _(this).scope = v; return this;
-  };
-
-  $Fn.prototype.label = function future(v) {
-    if (arguments.length == 0) return _(this).label;
-    else {
-      if (v === undefined) return this;
-      if (typeof v != 'string') throw new Error('cannot set a non-string label.');
-
-      var _this = _(this), _junjo = _(this.junjo); 
-      var num = _junjo.labels[_this.label];
-      delete _junjo.labels[_this.label];
-      _this.label = v;
-      _junjo.labels[v] = num;
-      return this;
-    }
   };
 
   $Fn.prototype.absorb = function(emitter, evtname, fn, name) {
@@ -508,7 +493,7 @@ var Junjo = (function(isNode) {
   }
 
   var jExecute = function(args, prevState, force) {
-    var _this  = _(this), label = _this.label, $junjo = $(this.junjo);
+    var _this  = _(this), label = this.label, $junjo = $(this.junjo);
     if ($junjo.counters[label]-- > 0 || ($junjo.called[label] && !force)) return;
 
     $junjo.current = this, $junjo.called[label] = true;
@@ -550,7 +535,7 @@ var Junjo = (function(isNode) {
       $this.timeout_id = setTimeout(function() {
         if (!$this.cb_called) {
           $this.done = true;
-          jFail.call(self, new Error('callback wasn\'t called within '+ timeout +' [sec] in function ' + self.label() + '.' ));
+          jFail.call(self, new Error('callback wasn\'t called within '+ timeout +' [sec] in function ' + self.label + '.' ));
         }
       }, timeout * 1000);
     }
