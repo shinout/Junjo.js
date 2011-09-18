@@ -207,9 +207,15 @@ var Junjo = (function(isNode) {
     Object.freeze(_this);
     var args = arguments, $fns = _this.$fns;
     $fns.forEach(function($fn) {
-      $this.counters[$fn.label] = _($fn).afters.length;
-      Object.freeze(_($fn));
-    });
+      _($fn).befores.forEach(function(lbl) {
+        var before = this.get(lbl);
+        if (!before) throw new Error('label ' + lbl + ' is not registered. in label ' + $fn.label);
+        if ( !$this.afters[before.label]) $this.afters[before.label] = [];
+        $this.afters[before.label].push($fn);
+      }, this);
+      $this.counters[$fn.label] = _($fn).befores.length;
+    }, this);
+
     $fns.forEach(function($fn) { jExecute.call($fn, args2arr(args)) });
     finishCheck.call(this);
 
@@ -235,6 +241,7 @@ var Junjo = (function(isNode) {
       skips        : {},    // skipped functions (label => bool)
       counters     : {},    // counters (label => number)
       called       : {},    // called functions (label => number)
+      afters       : {}     // list of labels of functions executing after the function with label of the key (label => $fn)
     };
     /** reset common properties **/
     this.err    = null;      // error to pass to the "end" event
@@ -260,16 +267,15 @@ var Junjo = (function(isNode) {
 
   /** private class $Fn **/
   var $Fn = function(fn, label, junjo) {
-    Object.defineProperty(this, 'id', { value : ++current_id, writable : false});
+    Object.defineProperty(this, 'fn', { value : fn, writable : false});
     Object.defineProperty(this, 'label', { value : label, writable : false});
     Object.defineProperty(this, 'junjo', { value : junjo, writable: false });
+    Object.defineProperty(this, 'id', { value : junjo.id + '.' + label, writable : false});
 
     // private properties
     props[this.id] = {
-      func         : fn, // registered function
-      callbacks    : [], // callback functions called in jNext
-      afters       : [], // labels of functions executed before this function
-      params       : []  // parameters to be given to the function. if empty, original callback arguments is used.
+      befores : [], // labels of functions executed before this function
+      params  : []  // parameters to be given to the function. if empty, original callback arguments is used.
     };
   };
 
@@ -350,24 +356,16 @@ var Junjo = (function(isNode) {
   $Fn.prototype.after = function() {
     if (this.junjo.running) throw new Error("Cannot call after() while during execution.");
     var _this = _(this), _junjo = _(this.junjo), lbl = this.label;
-    if (arguments.length == 0 && _junjo.labels[lbl] > 0)
+    if (arguments.length == 0 && this.junjo.size > 1)
       A.push.call(arguments, _junjo.$fns[_junjo.labels[lbl]-1].label);
 
-    A.forEach.call(arguments, function(lbl) {
-      var before = _junjo.$fns[_junjo.labels[lbl]];
-      if (!before || before === this || _this.afters.indexOf(lbl) >= 0) return;
-      _this.afters.push(lbl);
-      _(before).callbacks.push(this);
-    }, this);
-
+    A.forEach.call(arguments, function(l) { if (l != lbl) _this.befores.push(l) });
     return this;
   };
 
   $Fn.prototype.afterAbove = function(bool) {
     if (this.junjo.running) throw new Error("Cannot call afterAbove() while during execution.");
-    return this.after.apply(this, _(this.junjo).$fns.map(function($fn) {
-      return $fn.label;
-    }));
+    return this.after.apply(this, _(this.junjo).$fns.map(function($fn) { return $fn.label }));
   };
 
   $Fn.prototype.catches = function(fn) { _(this).catcher = fn; return this };
@@ -500,8 +498,8 @@ var Junjo = (function(isNode) {
     jResetState.call(this, prevState);
     var $this = $(this);
 
-    if (_this.afters.length) {
-      $this.args = _this.afters.reduce(function(arr, lbl) {
+    if (_this.befores.length) {
+      $this.args = _this.befores.reduce(function(arr, lbl) {
         var val = $junjo.results[lbl];
         if (is_arguments(val)) A.forEach.call(val, function(v) { arr.push(v) });
         else arr.push(val);
@@ -524,7 +522,7 @@ var Junjo = (function(isNode) {
         if (l.finished) return jNext.call(this, l.result);
       }
 
-      var ret = _this.func.apply(_this.scope || this, $this.args); // execution
+      var ret = this.fn.apply(_this.scope || this, $this.args); // execution
       $this.done = true;
       if (isSync(this)) return jNext.call(this, ret);
       if ($this.cb_attempted) return jCallback.apply(this, $this.cb_attempted);
@@ -601,7 +599,8 @@ var Junjo = (function(isNode) {
         : jExecute.call(this, args, {loop: l}, true);
     }
     setResult.call(this.junjo, this, result);
-    _this.callbacks.forEach(function($fn) { jExecute.call($fn) });
+    var afters = $(this.junjo).afters[this.label];
+    if (afters) afters.forEach(function($fn) { jExecute.call($fn) }, this);
   };
 
   function Future($j) { this.$j = $j }
