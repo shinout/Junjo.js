@@ -98,6 +98,9 @@ function junjo_test() {
   console.log("--------- end of del test----------");
 
   $j.async('8th', function() {
+    console.blue("inputs", this.inputs);
+    this.inputs[0] = "JJJJJJ";
+    console.blue("inputs", this.inputs);
     syncMethod(this.label);
     this.cb(null, this.label + " but synchronous"); // calling synchronously
   }).after('5th');

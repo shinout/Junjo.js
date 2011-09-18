@@ -58,6 +58,7 @@ var Junjo = (function(isNode) {
     running  : { get : function () { return $(this).running }, set : empty },
     size     : { get : function () { return _(this).$fns.length }, set : empty },
     $        : { get : function () { return this.shared }, set : function(v) { this.shared = v } },
+    inputs   : { get : function () { return $(this).inputs }, set : empty },
 
     timeout : {
       get : function() { return (_(this).timeout != null) ? _(this).timeout : 5 },
@@ -214,6 +215,8 @@ var Junjo = (function(isNode) {
     $this.running = true;
     Object.freeze(_this);
     var args = arguments, $fns = _this.$fns;
+    $this.inputs = args;
+    Object.freeze($this.inputs);
     $fns.forEach(function($fn) {
       _($fn).befores.forEach(function(lbl) {
         var before = this.get(lbl);
@@ -288,8 +291,8 @@ var Junjo = (function(isNode) {
   };
 
   // public properties
-  // proxy to properties in Junjo, for enumerablity, not set to $Fn.prototype.
-  ['shared', '$', 'err', 'out'].forEach(function(propname) {
+  // proxy to properties in Junjo
+  ['shared', '$', 'err', 'out', 'inputs'].forEach(function(propname) {
     Object.defineProperty($Fn.prototype, propname, {
       get : function()  { return this.junjo[propname] },
       set : function(v) { this.junjo[propname] = v }
