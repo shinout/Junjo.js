@@ -7,8 +7,8 @@ var Junjo = (function(isNode) {
       args2arr     = function(args) { return A.map.call(args, function(v) {return v }) },
       nextTick     = (isNode) ? process.nextTick : function(fn) { setTimeout(fn, 0) },
       is_arguments = function(v) { return v && v.callee },
-      SHIFT        = 'shift',
-      getSubFunc   = function($j) { return function() { this.sub = $j } };
+      getSubFunc   = function($j) { return function() { this.sub = $j } },
+      SHIFT        = 'shift';
 
   /** preparation for private properties **/
 
@@ -419,6 +419,9 @@ var Junjo = (function(isNode) {
     return $fn;
   };
 
+  $Fn.prototype.pre  = function(fn) { _(this).pre  = fn };
+  $Fn.prototype.post = function(fn) { _(this).post = fn };
+
   $Fn.prototype.absorb = function(emitter, evtname, fn, name) {
     if (!this.junjo.running) throw new Error("Cannot call absorb() before execution.");
     var self = this, $this = $(this);
@@ -540,6 +543,7 @@ var Junjo = (function(isNode) {
         if (l.finished) return jNext.call(this, l.result);
       }
 
+      if (typeof _this.pre == 'function') $this.args = _this.pre.apply(_this.scope || this, $this.args);
       var ret = this.fn.apply(_this.scope || this, $this.args); // execution
       $this.done = true;
       if (isSync(this)) return jNext.call(this, ret);
@@ -597,25 +601,28 @@ var Junjo = (function(isNode) {
 
   // call next functions
   var jNext = function(result, skipFailCheck) {
-    var _this = _(this), $this = $(this), _junjo = _(this.junjo);
-    if ($this.cb_called) return;
+    try {
+      var _this = _(this), $this = $(this), _junjo = _(this.junjo);
+      if ($this.cb_called) return;
 
-    var fsterr = jInheritValue.call(this, 'firstError');
-    if (fsterr && is_arguments(result)) {
-      if (result[0] && !skipFailCheck) return jFail.call(this, result[0]);
-      if (fsterr == SHIFT) A.shift.call(result);
+      var fsterr = jInheritValue.call(this, 'firstError');
+      if (fsterr && is_arguments(result)) {
+        if (result[0]) throw result[0];
+        if (fsterr == SHIFT) A.shift.call(result);
+      }
+      if ($this.timeout_id) clearTimeout($this.timeout_id); // remove tracing callback
+
+      if ($this.loop && !$this.loop.finished) {
+        var l = $this.loop, args = l.args;
+        l.count++, l.result = result;
+        return (_this.loop.nextTick)
+          ? nextTick(function() { jExecute.call(self, args, {loop: l}, true) })
+          : jExecute.call(this, args, {loop: l}, true);
+      }
+      if (typeof _this.post == 'function') { result = _this.post.apply(this, is_arguments(result) ? result : [result]) }
+      $this.cb_called = true;
     }
-
-    $this.cb_called = true;
-    if ($this.timeout_id) clearTimeout($this.timeout_id); // remove tracing callback
-
-    if ($this.loop && !$this.loop.finished) {
-      var l = $this.loop, args = l.args;
-      l.count++, l.result = result;
-      return (_this.loop.nextTick)
-        ? nextTick(function() { jExecute.call(self, args, {loop: l}, true) })
-        : jExecute.call(this, args, {loop: l}, true);
-    }
+    catch (e) { if (!skipFailCheck) return jFail.call(this, e) }
     setResult.call(this.junjo, this, result);
     var afters = $(this.junjo).afters[this.label];
     if (afters) afters.forEach(function($fn) { jExecute.call($fn) }, this);
