@@ -198,7 +198,11 @@ var Junjo = (function(isNode) {
   Junjo.prototype.clone = function() {
     var $j = new Junjo(), _this = _(this), _that = _($j);
     Object.keys(_this).forEach(function(k) { _that[k] = _this[k] });
-    _this.$fns.forEach(function($fn, k) { _that.$fns[k] = $fn.clone($j) });
+    _this.$fns.forEach(function($fn, k) {
+      _that.$fns[k] = new $Fn($fn.fn, $fn.label, $j);
+      var _$fn = _($fn), _$new = _(_that.$fns[k]);
+      Object.keys(_($fn)).forEach(function(i) { _$new[k] = _$fn[k] });
+    });
     return $j;
   };
 
@@ -473,13 +477,6 @@ var Junjo = (function(isNode) {
     else if (typeof val == 'function') _this.loop = mask(val);
     _this.loop.nextTick = !!nextTick;
     return this;
-  };
-
-  $Fn.prototype.clone = function($j) {
-    var $fn = new $Fn(this.fn, this.label, $j);
-    var _this = _(this), _that = _($fn);
-    Object.keys(_this).forEach(function(k) { _that[k] = _this[k] });
-    return $fn;
   };
 
   /** private functions of $Fn **/
