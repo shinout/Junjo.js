@@ -439,7 +439,7 @@ var Junjo = (function(isNode) {
     if (arguments.length == 0 && this.junjo.size > 1)
       A.push.call(arguments, _junjo.$fns[_junjo.labels[lbl]-1].label);
 
-    A.forEach.call(arguments, function(l) { if (l != lbl) _this.befores.push(l) });
+    A.forEach.call(arguments, function(l) { if (l != lbl && _this.befores.indexOf(l) < 0) _this.befores.push(l) });
     return this;
   };
 
