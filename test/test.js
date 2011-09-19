@@ -10,45 +10,6 @@ function junjo_test() {
 		return Junjo.prototype.register.apply(this, arguments);
 	}
 
-  $j('timeouterr', function() {
-    this.timeout(3);
-  });
-
-  $j('nodecberr', function() {
-    this.firstError();
-  });
-
-  $j('scoperr', function() {
-    this.scope({});
-
-  }).fail(function(e, args) {
-    console.log("fail test");
-    console.log(this.label + " occurred an error -> " + e.message);
-    return true;
-  });
-
-  $j('catcheserr', function() {
-    this.catches('nodecberr');
-  });
-
-  $j('catchesAboveErr', function() {
-    this.catchesAbove('nodecberr');
-  });
-
-  $j('afterErr', function() {
-    this.after('nodecberr');
-  });
-
-  $j('afterAboveErr', function() {
-    this.afterAbove('nodecberr');
-  });
-
-  $j.catchesAbove(function(e, args) {
-    // console.error(e.stack);
-    console.cyan(e.message + ' from ' + this.label);
-    return true;
-  });
-
   $j('1st', function(count) {
     if (!count) count = 1;
     console.log("--------------[COUNT : " + count + "]------------------");

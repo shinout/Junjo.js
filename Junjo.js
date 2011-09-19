@@ -280,20 +280,6 @@ var Junjo = (function(isNode) {
   /** "this" scope in functions **/
   var $Scope = function($fn) { O(this, '$fn', { value : $fn, writable : false}) };
 
-  /** $Fn : registered function in Junjo  **/
-  var $Fn = function(fn, label, junjo) {
-    O(this, 'fn', { value : fn, writable : false});
-    O(this, 'label', { value : label, writable : false});
-    O(this, 'junjo', { value : junjo, writable: false });
-    O(this, 'id', { value : junjo.id + '.' + label, writable : false});
-
-    // private properties
-    props[this.id] = {
-      befores : [], // labels of functions executed before this function
-      params  : []  // parameters to be given to the function. if empty, original callback arguments is used.
-    };
-  };
-
   // public properties of $Scope
   ['label', 'junjo', 'fn', 'id']
   .forEach(function(p) { O($Scope.prototype, p, { get : function() { return this.$fn[p] }, set: empty }) });
@@ -303,10 +289,7 @@ var Junjo = (function(isNode) {
   });
 
   ['callback', 'cb']
-  .forEach(function(p) {
-    O($Scope.prototype, p, { get : function() { return this.callbacks(0) }, set : empty });
-    O($Fn.prototype, p, { get : function() { var s = $(this).$scope; if (s) return s.callbacks(0) }, set : empty })
-  });
+  .forEach(function(p) { O($Scope.prototype, p, { get : function() { return this.callbacks(0) }, set : empty }) });
 
   O($Scope.prototype, 'sub', {
     get : function() {
@@ -410,19 +393,22 @@ var Junjo = (function(isNode) {
   };
   $Scope.prototype.gather = $Scope.prototype.absorbData;
 
+  /** $Fn : registered function in Junjo  **/
+  var $Fn = function(fn, label, junjo) {
+    O(this, 'fn', { value : fn, writable : false});
+    O(this, 'label', { value : label, writable : false});
+    O(this, 'junjo', { value : junjo, writable: false });
+    O(this, 'id', { value : junjo.id + '.' + label, writable : false});
+
+    // private properties
+    props[this.id] = {
+      befores : [], // labels of functions executed before this function
+      params  : []  // parameters to be given to the function. if empty, original callback arguments is used.
+    };
+  };
+
   $Fn.prototype.scope = function(scope) {
     if (scope != null && typeof scope == 'object') _(this).scope = scope;
-    return this;
-  };
-
-  $Fn.prototype.firstError = function(val) {
-    if (val != SHIFT && val !== false) val = true;
-    _(this).firstError = val;
-    return this;
-  };
-
-  $Fn.prototype.timeout = function(v) {
-    if (typeof v == "number") _(this).timeout = v;
     return this;
   };
 
@@ -432,24 +418,23 @@ var Junjo = (function(isNode) {
   };
 
   $Fn.prototype.params = function() {
-    A.forEach.call(arguments, function(v) {
-      this.params.push(v);
-    }, _(this));
+    A.forEach.call(arguments, function(v) { this.push(v) }, _(this).params);
     return this;
   };
 
-  $Fn.prototype.sync = function(bool) {
-    _(this).async = (bool === undefined) ? false : !bool;
-    return this;
-  };
+  $Fn.prototype.timeout = function(v) { if (typeof v == "number") _(this).timeout = v; return this };
+  $Fn.prototype.sync  = function(bool) { _(this).async = (bool === undefined) ? false : !bool; return this };
+  $Fn.prototype.async = function(bool) { _(this).async = (bool === undefined) ? true : !!bool; return this };
+  $Fn.prototype.pre  = function(fn) { _(this).pre  = fn };
+  $Fn.prototype.post = function(fn) { _(this).post = fn };
 
-  $Fn.prototype.async = function(bool) {
-    _(this).async = (bool === undefined) ? true : !!bool;
+  $Fn.prototype.firstError = function(val) {
+    if (val != SHIFT && val !== false) val = true;
+    _(this).firstError = val;
     return this;
   };
 
   $Fn.prototype.after = function() {
-    if (this.junjo.running) throw new Error("Cannot call after() while during execution.");
     var _this = _(this), _junjo = _(this.junjo), lbl = this.label;
     if (arguments.length == 0 && this.junjo.size > 1)
       A.push.call(arguments, _junjo.$fns[_junjo.labels[lbl]-1].label);
@@ -459,17 +444,12 @@ var Junjo = (function(isNode) {
   };
 
   $Fn.prototype.afterAbove = function(bool) {
-    if (this.junjo.running) throw new Error("Cannot call afterAbove() while during execution.");
     return this.after.apply(this, _(this.junjo).$fns.map(function($fn) { return $fn.label }));
   };
 
   $Fn.prototype.catches = function(fn) { _(this).catcher = fn; return this };
-
-  // JSDeferred-like API
   $Fn.prototype.fail = $Fn.prototype.catches;
-  $Fn.prototype.next = function() {
-    return this.junjo.register.apply(this.junjo, arguments).after(this.label);
-  };
+  $Fn.prototype.next = function() { return this.junjo.register.apply(this.junjo, arguments).after(this.label) };
 
   $Fn.prototype.failSafe = function() {
     var args = arguments;
@@ -491,20 +471,12 @@ var Junjo = (function(isNode) {
     return this;
   };
 
-  $Fn.prototype.scope = function(v) {
-    if (v === undefined) return _(this).scope;
-    else _(this).scope = v; return this;
-  };
-
   $Fn.prototype.clone = function($j) {
     var $fn = new $Fn(this.fn, this.label, $j);
     var _this = _(this), _that = _($fn);
     Object.keys(_this).forEach(function(k) { _that[k] = _this[k] });
     return $fn;
   };
-
-  $Fn.prototype.pre  = function(fn) { _(this).pre  = fn };
-  $Fn.prototype.post = function(fn) { _(this).post = fn };
 
   /** private functions of $Fn **/
 
@@ -518,7 +490,8 @@ var Junjo = (function(isNode) {
       finished     : false, // whether jNext is normally finished called or not.
       cb_accessed  : false, // whether callback is accessed or not
       cb_count     : 0,
-      cb_results   : {}
+      cb_results   : {},
+      $scope       : new $Scope(this) // "this" in the functioin
     };
     if (!prevState) return;
     Object.keys(prevState).forEach(function(k) { variables[this.id][k] = prevState[k] }, this);
@@ -528,9 +501,9 @@ var Junjo = (function(isNode) {
     var _this  = _(this), label = this.label, $junjo = $(this.junjo);
     if ($junjo.counters[label]-- > 0 || ($junjo.called[label] && !force)) return;
 
-    $junjo.current = this, $junjo.called[label] = true;
     jResetState.call(this, prevState);
     var $this = $(this);
+    $junjo.current = $this.$scope, $junjo.called[label] = true;
 
     if (_this.befores.length) {
       $this.args = _this.befores.reduce(function(arr, lbl) {
@@ -541,8 +514,6 @@ var Junjo = (function(isNode) {
       }, []);
     }
     else $this.args = args;
-    
-    $this.$scope = new $Scope(this);
     if (_this.params.length) $this.args = _this.params.map(Junjo.present);
 
     try {
@@ -598,10 +569,7 @@ var Junjo = (function(isNode) {
     return jNext.call(this, result, true); // pass the second arg to avoid infinite loop
   };
 
-  var jInheritValue = function(keyname) {
-    var v = _(this)[keyname];
-    return (v == null) ? this.junjo[keyname] : v;
-  };
+  var jInheritValue = function(k) { var v = _(this)[k]; return (v == null) ? this.junjo[k] : v };
 
   var jCallback = function() {
     var $this = $(this);
@@ -633,7 +601,7 @@ var Junjo = (function(isNode) {
           ? nextTick(function() { jExecute.call(self, args, {loop: l}, true) })
           : jExecute.call(this, args, {loop: l}, true);
       }
-      if (typeof _this.post == 'function') { result = _this.post.apply(this, is_arguments(result) ? result : [result]) }
+      if (typeof _this.post == 'function') { result = _this.post.apply($this.$scope, is_arguments(result) ? result : [result]) }
       $this.finished = true;
     }
     catch (e) { if (!skipFailCheck) return jFail.call(this, e) }
@@ -642,7 +610,7 @@ var Junjo = (function(isNode) {
     if (afters) afters.forEach(function($fn) { jExecute.call($fn) }, this);
   };
 
-  function Future($j) { this.$j = $j }
+  var Future = function($j) { this.$j = $j };
   Future.get = function(target, args) {
     var kp = new KeyPath(target, args, this);
     return (this.running) ? kp.get() : kp;
@@ -663,7 +631,7 @@ var Junjo = (function(isNode) {
     });
   });
 
-  function KeyPath(target, args, scope) { this.target = target, this.args = args, this.scope = scope }
+  var KeyPath = function(target, args, scope) { this.target = target, this.args = args, this.scope = scope };
   KeyPath.get = function(target, args, scope) {
     if (typeof target == 'function') return target.apply(scope, args);
     return A.reduce.call(args, function(o, k) {
