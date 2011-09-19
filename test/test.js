@@ -11,7 +11,6 @@ function junjo_test() {
 	}
 
   $j('1st', function(count) {
-    if (!count) count = 1;
     console.log("--------------[COUNT : " + count + "]------------------");
     this.out.count = ++count;
     asyncMethod(this.label, 10, this.cb);
@@ -20,16 +19,16 @@ function junjo_test() {
 
   $j('2nd', function() {
     asyncMethod($j.current.label, 20, $j.current.cb);
-    console.log($j.current.$.hoge);
+    T.equal($j.current.$.hoge, 'HogeHoge');
     $j.$.abc = "ABC";
   }).scope({hoge: 'FugaFuga'});
 
   $j.async('3rd', function() {
     asyncMethod(this.label, 5, this.callback);
-    console.log(this.shared.hoge);
-    console.log(this.shared.abc);
+    T.equal(this.shared.hoge, 'HogeHoge');
+    T.equal(this.shared.abc, 'ABC');
     this.out[this.label] = 'output result';
-    console.log(this.out);
+    T.equal($j.out['3rd'], 'output result');
   }).after('1st');
 
   $j('4th', function() {
@@ -50,21 +49,23 @@ function junjo_test() {
   $j('7th', asyncMethod).params('7th', 100, $j.cb).after();
 
   $j.remove('del');
-  console.log("--------- del test----------");
-  console.log($j.get('3rd').label);
-  console.log($j.get('4th').label);
-  console.log($j.get('5th').label);
-  console.log($j.get('6th').label);
-  console.log($j.get('7th').label);
-  console.log("--------- end of del test----------");
+  T.equal($j.get('3rd').label, '3rd');
+  T.equal($j.get('4th').label, '4th');
+  T.equal($j.get('5th').label, '5th');
+  T.equal($j.get('6th').label, '6th');
+  T.equal($j.get('7th').label, '7th');
 
   $j.async('8th', function() {
-    console.blue("inputs", this.inputs);
+    T.equal(this.inputs.length, 1, "inputs");
     this.inputs[0] = "JJJJJJ";
-    console.blue("inputs", this.inputs);
+    T.equal(this.inputs.length, 1, "inputs");
     syncMethod(this.label);
     this.cb(null, this.label + " but synchronous"); // calling synchronously
-  }).after('5th');
+  }).after('5th')
+  .post(function(e, o) {
+    T.equal(o, '8th but synchronous');
+    return Junjo.multi(e, o);
+  });
 
   $j.sync('9th', syncMethod).params('9th').after('5th');
 
@@ -76,7 +77,7 @@ function junjo_test() {
 
   $j2 = new Junjo();
   $j2('11th', function(v) {
-    console.log('subJunjo from ' + v);
+    T.equal(v, "10th using next() (sync)");
     asyncMethod(this.label, 20, this.callback);
   });
 
@@ -87,23 +88,16 @@ function junjo_test() {
 
   $j($j2).after('10th')
   .next('13th', function() {
+    T.equal(arguments[1], "11th 12th subJunjo end");
     asyncMethod(this.label, 20, this.callback);
   });
 
   $j('last', function() {
-    var args = Array.prototype.map.call(arguments, function(v) {
-      switch (v) {
-        case undefined: return 'undefined';
-        case null: return 'null';
-        default: return v;
-      }
-    });
-
-    consolelog(args.join(' + '));
-    asyncMethod(this.label, 35, this.callback);
+    T.equal(arguments.length, 23);
   }).afterAbove();
 
   $j.catchesAbove(function(e, args) {
+    T.fail(e);
     console.red(e.message, this.label);
 		return true;
   });
@@ -113,6 +107,6 @@ function junjo_test() {
     if (result.count < 3) $j.run(result.count);
   });
 
-  $j.run();
+  $j.run(1);
 }
 
