@@ -16,6 +16,7 @@ function junjo_test() {
   $j('1st', function(color) {
     this.$.col = color;
     asy(this.$.col, this.label, 50, this.callback);
+    T.ok( this.$.col == (this.junjo === $j) ? 'green' : 'purple', "two junjo objs");
   });
 
   $j('2nd', function() {

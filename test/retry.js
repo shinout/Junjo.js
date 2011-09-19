@@ -3,6 +3,7 @@ if (node) junjo_test();
 
 // test start
 function junjo_test() {
+  var counter = 0;
 
   var $j = new Junjo({run: 1});
 
@@ -13,9 +14,9 @@ function junjo_test() {
     if (n < 30) throw new Error("smalllllllll!");
     return n;
   })
-  .retry(-1, null, true)
   .retry(60, function(e, args, count) {
-    console.log(count);
+    T.equal(args[0], this.$.N, "args");
+    T.equal(count, ++counter, "count");
     return ++this.$.N;
   })
   .next(function(N) {

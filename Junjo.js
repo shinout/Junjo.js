@@ -524,7 +524,7 @@ var Junjo = (function(isNode) {
         var l = $this.loop;
         l.args = args ? args.map(function(v) {return v}) : null;
         $this.args.push(l.result, l.count);
-        l.finished = !_this.loop.call(this, l.result, l.args, l.count);
+        l.finished = !_this.loop.call($this.$scope, l.result, l.args, l.count);
         if (l.finished) return jNext.call(this, l.result);
       }
 
@@ -557,7 +557,7 @@ var Junjo = (function(isNode) {
     if (_retry) {
       if (!$this.trial) $this.trial = 0;
       if ($this.trial++ != _retry.count) {
-        var args = _retry.fn.call(this, e, $this.args, $this.trial);
+        var args = _retry.fn.call($this.$scope, e, $this.args, $this.trial);
         if (!is_arguments(args)) args = [args];
         return (_retry.nextTick)
           ? nextTick(function() {jExecute.call(self, args, {trial: $this.trial}, true)})

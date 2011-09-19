@@ -20,6 +20,8 @@ function junjo_test() {
 
   $j('4th', function(err, out) {
     console.log(err, this.label, out);
+    T.deepEqual(err, null, "err");
+    T.deepEqual(out, { '2nd': 'hoge', '3rd': 'fuga'}, "out");
   }).after('1st');
 
 
@@ -28,6 +30,8 @@ function junjo_test() {
 
   $j2('BB', function() {
     console.log(arguments);
+    T.equal(arguments[0], '000');
+    T.equal(arguments.length, 3, "arguments length");
     syncMethod(this.label);
     this.out[this.label] = "piyo";
   });
@@ -37,6 +41,7 @@ function junjo_test() {
     this.sub = $j2;
   }).next(function(err, out) {
     console.log(out);
+    T.deepEqual(out, { BB : 'piyo'});
   });
 
   var $j3 = new Junjo();
@@ -52,6 +57,7 @@ function junjo_test() {
   $j($j3)
   .next(function(err, out) {
     console.log("subsub? -->", out);
+    T.deepEqual(out, 'subsub');
   });
 
   $j.run('000', 111, 2222);

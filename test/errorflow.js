@@ -13,6 +13,8 @@ function junjo_test() {
   .failSafe('hoge', {fuga: "piyo"});
 
   $j('2nd', function(a, b) {
+    T.equal(a, "hoge");
+    T.equal(b.fuga, "piyo");
     console.log(a, b);
   }).after();
 

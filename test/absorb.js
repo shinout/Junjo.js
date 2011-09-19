@@ -6,9 +6,10 @@ function junjo_test() {
   if (!node) return;
   var spawn = require('child_process').spawn;
 
-  var jj = new Junjo();
+  var $j = new Junjo();
 
-  jj('1st', function() {
+  $j('1st', function() {
+    T.equal(arguments.length, 0, "no args");
     var grep = spawn('grep', ['consolelog', "unkO"]);
     this.absorbData(grep.stdout, 'data', '1stdata');
     this.absorbError(grep.stderr, 'data', '1sterr');
@@ -16,19 +17,22 @@ function junjo_test() {
   .firstError('shift')
   .fail(function(e) {console.log("grepError", e.message)});
 
-  jj('2nd',function() {
+  $j('2nd',function() {
+    T.strictEqual(arguments[0], undefined, "result is undefined");
     var grep = spawn('grep', ['consolelog', __filename]);
     this.absorbData(grep.stdout, 'data', '1stdata');
     this.absorbError(grep.stderr, 'data', '1sterr');
   }).after('1st');
 
-  jj(function(err, out) {
+  $j(function(err, out) {
     console.log("grepResult", out);
+    T.strictEqual(err, null, "no err");
+    T.ok(out, "out");
   }).after('2nd');
 
-  var $j = new Junjo();
+  var $j2 = new Junjo();
 
-  $j(function() {
+  $j2(function() {
     var http = require('http');
     var req = http.request({
       method: 'GET',
@@ -40,7 +44,7 @@ function junjo_test() {
   })
   .fail(function(e) {
     console.log("request Error", e.message);
-    $j.terminate();
+    $j2.terminate();
   })
 
   .next(function(res) {
@@ -54,8 +58,12 @@ function junjo_test() {
 
   .next(function(err, out) {
     console.log(err, out);
+    T.strictEqual(err, null, "no err");
+    T.strictEqual(typeof out, 'object', "typeof out");
+    T.strictEqual(typeof out["1stdata"], 'string', "typeof out.1stdata");
+    T.strictEqual(out["sub"], 'Yeah!', "out.sub");
   });
 
-  $j.after(jj);
-  jj.run();
+  $j2.after($j);
+  $j.run();
 }

@@ -15,6 +15,7 @@ function junjo_test() {
 
   $j(function(val) {
     console.green(val);
+    T.equal(val.split('\n').length, 3);
   }).after();
 
   $j.run();
