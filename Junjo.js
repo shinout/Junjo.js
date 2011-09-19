@@ -563,7 +563,7 @@ var Junjo = (function(isNode) {
       }
     }
 
-    var result = jInheritValue.call(this, 'catcher').call(this, e, $this.args);
+    var result = mask(jInheritValue.call(this, 'catcher')).call($this.$scope, e, $this.args);
     return jNext.call(this, result, true); // pass the second arg to avoid infinite loop
   };
 
