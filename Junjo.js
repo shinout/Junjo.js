@@ -90,19 +90,15 @@ var Junjo = (function(isNode) {
   });
 
   // Junjo extends Function prototype
-  Object.getOwnPropertyNames(Function.prototype).forEach(function(k) {
-    Junjo.prototype[k] = Function.prototype[k];
-  });
+  Object.getOwnPropertyNames(Function.prototype).forEach(function(k) { Junjo.prototype[k] = Function.prototype[k] });
 
   /** public functions **/
 
   // register a function
   Junjo.prototype.register = function() {
     var label = (typeof arguments[0] != 'function') ? A.shift.call(arguments) : undefined;
-    if (Junjo.isJunjo(arguments[0])) {
-      $j = arguments[0];
-      return this.register(label, getSubFunc($j));
-    }
+    if (Junjo.isJunjo(arguments[0])) return this.register(label, getSubFunc(arguments[0]));
+
     var _this = _(this);
     if (_this.labels[label]) throw new Error('label ' + label + ' is already exists.');
     if (label == undefined) { label = _this.$fns.length; while (_this.labels[label]) { label++ } }
