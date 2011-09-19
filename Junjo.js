@@ -277,7 +277,10 @@ var Junjo = (function(isNode) {
     this.emit('end', this.err, this.out);
   };
 
-  /** private class $Fn **/
+  /** "this" scope in functions **/
+  var $Scope = function($fn) { O(this, '$fn', { value : $fn, writable : false}) };
+
+  /** $Fn : registered function in Junjo  **/
   var $Fn = function(fn, label, junjo) {
     O(this, 'fn', { value : fn, writable : false});
     O(this, 'label', { value : label, writable : false});
@@ -291,20 +294,37 @@ var Junjo = (function(isNode) {
     };
   };
 
-  // public properties
-  // proxy to properties in Junjo
-  ['shared', '$', 'err', 'out', 'inputs'].forEach(function(propname) {
-    O($Fn.prototype, propname, {
-      get : function()  { return this.junjo[propname] },
-      set : function(v) { this.junjo[propname] = v }
-    });
+  // public properties of $Scope
+  ['label', 'junjo', 'fn', 'id']
+  .forEach(function(p) { O($Scope.prototype, p, { get : function() { return this.$fn[p] }, set: empty }) });
+
+  ['shared', '$', 'err', 'out', 'inputs'].forEach(function(p) {
+    O($Scope.prototype, p, { get : function()  { return this.$fn.junjo[p] }, set : function(v) { this.$fn.junjo[p] = v } });
   });
 
-  ['callback', 'cb'].forEach(function(p) {
-    O($Fn.prototype, p, { get : function() { return this.callbacks(0) }, set : empty });
+  ['callback', 'cb']
+  .forEach(function(p) {
+    O($Scope.prototype, p, { get : function() { return this.callbacks(0) }, set : empty });
+    O($Fn.prototype, p, { get : function() { var s = $(this).$scope; if (s) return s.callbacks(0) }, set : empty })
   });
 
-  $Fn.prototype.callbacks = function(key) {
+  O($Scope.prototype, 'sub', {
+    get : function() {
+      var $this = $(this);
+      if (!$this.sub) { this.sub = new Junjo() }
+      return $this.sub;
+    },
+    set : function($j) {
+      if ($j.constructor != Junjo) return;
+      var $this = $(this), cb = this.callback;
+      $this.sub = $j;
+      // $this.sub.on('end', function() {cb($this.sub.err, $this.sub.out)});
+      this.absorbEnd($this.sub, 'sub', true);
+      nextTick(function() { $this.sub.run.apply($this.sub, $this.args) });
+    }
+  });
+
+  $Scope.prototype.callbacks = function(key) {
     var $this = $(this);
     $this.cb_accessed = true;
     key = getCallbackName(key, $this);
@@ -322,22 +342,73 @@ var Junjo = (function(isNode) {
     return key;
   };
 
-  O($Fn.prototype, 'sub', {
-    get : function() {
-      var $this = $(this);
-      if (!$this.sub) { this.sub = new Junjo() }
-      return $this.sub;
-    },
-    set : function($j) {
-      if ($j.constructor == Junjo) {
-        var $this = $(this), cb = this.callback;
-        $this.sub = $j;
-        // $this.sub.on('end', function() {cb($this.sub.err, $this.sub.out)});
-        this.absorbEnd($this.sub, 'sub', true);
-        nextTick(function() { $this.sub.run.apply($this.sub, $this.args) });
+  $Scope.prototype.absorb = function(emitter, evtname, fn, name) {
+    var self = this, $this = $(this);
+    name || (name = $this.emitterCount.toString());
+    emitter.on(evtname, function() {
+      try {
+        A.push.call(arguments, $this.absorbs[name], self);
+        var ret = fn.apply(emitter, arguments);
+        if (ret) $this.absorbs[name] = ret;
       }
+      catch (e) {
+        $this.absorbErr = e;
+      }
+    });
+    return this.absorbEnd(emitter, name);
+  };
+
+  $Scope.prototype.absorbError = function(emitter, evtname) {
+    var self = this, $this = $(this);
+    var err = '';
+    var fn = (typeof arguments[2] == 'function') ? A.splice.call(arguments, 2, 1): function(e) {
+      if (toStr) err += e.toString();
+      else err = e;
     }
-  });
+    var name =  arguments[2] || ($this.emitterCount.toString());
+    var toStr = (evtname == 'data' && arguments[3] === undefined) ? true : !! arguments[3];
+
+    emitter.on(evtname || 'error', function() {
+      try {
+        A.push.call(arguments, err, self);
+        fn.apply(emitter, arguments);
+      }
+      catch (e) {
+        err = e;
+      }
+    });
+    emitter.on('end', function() {if (err) $this.absorbErr = (typeof err == 'string') ? new Error(err) : err });
+    return this.absorbEnd(emitter, name);
+  };
+
+  $Scope.prototype.absorbEnd = function(emitter, name, isSub) {
+    if (name == 'sub' && !isSub) throw new Error("name must not be 'sub'.");
+    var $this = $(this);
+    name || (name = $this.emitterCount.toString());
+    $this.emitterCount++;
+    var cb = this.callback;
+    emitter.on('end', function() {
+      if (emitter.constructor == Junjo) {
+        $this.absorbs[name] = arguments[1];
+        if (arguments[0]) $this.absorbErr = arguments[0];
+      }
+      if (--$this.emitterCount > 0) return;
+      var out = (Object.keys($this.absorbs).length == 1) ? $this.absorbs[Object.keys($this.absorbs)[0]] : $this.absorbs;
+      nextTick(function() { cb($this.absorbErr, out) });
+    });
+    return this;
+  };
+
+  $Scope.prototype.absorbData = function(emitter, evtname, name) {
+    var $this = $(this);
+    name || (name = $this.emitterCount.toString());
+    $this.absorbs[name] = '';
+    return this.absorb(emitter, evtname || 'data', function(data) {
+      var $fn = A.pop.call(arguments), result = A.pop.call(arguments);
+      return result + data.toString();
+    }, name);
+  };
+  $Scope.prototype.gather = $Scope.prototype.absorbData;
 
   $Fn.prototype.scope = function(scope) {
     if (scope != null && typeof scope == 'object') _(this).scope = scope;
@@ -435,79 +506,6 @@ var Junjo = (function(isNode) {
   $Fn.prototype.pre  = function(fn) { _(this).pre  = fn };
   $Fn.prototype.post = function(fn) { _(this).post = fn };
 
-  $Fn.prototype.absorb = function(emitter, evtname, fn, name) {
-    if (!this.junjo.running) throw new Error("Cannot call absorb() before execution.");
-    var self = this, $this = $(this);
-    name || (name = $this.emitterCount.toString());
-    emitter.on(evtname, function() {
-      try {
-        A.push.call(arguments, $this.absorbs[name], self);
-        var ret = fn.apply(emitter, arguments);
-        if (ret) $this.absorbs[name] = ret;
-      }
-      catch (e) {
-        $this.absorbErr = e;
-      }
-    });
-    return this.absorbEnd(emitter, name);
-  };
-
-  $Fn.prototype.absorbError = function(emitter, evtname) {
-    if (!this.junjo.running) throw new Error("Cannot call absorbError() before execution.");
-    var self = this, $this = $(this);
-    var err = '';
-    var fn = (typeof arguments[2] == 'function') ? A.splice.call(arguments, 2, 1): function(e) {
-      if (toStr) err += e.toString();
-      else err = e;
-    }
-    var name =  arguments[2] || ($this.emitterCount.toString());
-    var toStr = (evtname == 'data' && arguments[3] === undefined) ? true : !! arguments[3];
-
-    emitter.on(evtname || 'error', function() {
-      try {
-        A.push.call(arguments, err, self);
-        fn.apply(emitter, arguments);
-      }
-      catch (e) {
-        err = e;
-      }
-    });
-
-    emitter.on('end', function() {if (err) $this.absorbErr = (typeof err == 'string') ? new Error(err) : err });
-    return this.absorbEnd(emitter, name);
-  };
-
-  $Fn.prototype.absorbEnd = function(emitter, name, isSub) {
-    if (!this.junjo.running) throw new Error("Cannot call absorbEnd() before execution.");
-    if (name == 'sub' && !isSub) throw new Error("name must not be 'sub'.");
-    var $this = $(this);
-    name || (name = $this.emitterCount.toString());
-    $this.emitterCount++;
-    var cb = this.callback;
-    emitter.on('end', function() {
-      if (emitter.constructor == Junjo) {
-        $this.absorbs[name] = arguments[1];
-        if (arguments[0]) $this.absorbErr = arguments[0];
-      }
-      if (--$this.emitterCount > 0) return;
-      var out = (Object.keys($this.absorbs).length == 1) ? $this.absorbs[Object.keys($this.absorbs)[0]] : $this.absorbs;
-      nextTick(function() { cb($this.absorbErr, out) });
-    });
-    return this;
-  };
-
-  $Fn.prototype.absorbData = function(emitter, evtname, name) {
-    if (!this.junjo.running) throw new Error("Cannot call absorbData() before execution.");
-    var $this = $(this);
-    name || (name = $this.emitterCount.toString());
-    $this.absorbs[name] = '';
-    return this.absorb(emitter, evtname || 'data', function(data) {
-      var $fn = A.pop.call(arguments), result = A.pop.call(arguments);
-      return result + data.toString();
-    }, name);
-  };
-  $Fn.prototype.gather = $Fn.prototype.absorbData;
-
   /** private functions of $Fn **/
 
   var jResetState = function(prevState) {
@@ -544,6 +542,7 @@ var Junjo = (function(isNode) {
     }
     else $this.args = args;
     
+    $this.$scope = new $Scope(this);
     if (_this.params.length) $this.args = _this.params.map(Junjo.present);
 
     try {
@@ -558,8 +557,8 @@ var Junjo = (function(isNode) {
         if (l.finished) return jNext.call(this, l.result);
       }
 
-      if (typeof _this.pre == 'function') $this.args = _this.pre.apply(_this.scope || this, $this.args);
-      var ret = this.fn.apply(_this.scope || this, $this.args); // execution
+      if (typeof _this.pre == 'function') $this.args = _this.pre.apply(_this.scope || $this.$scope, $this.args);
+      var ret = this.fn.apply(_this.scope || $this.$scope, $this.args); // execution
       $this.done = true;
       if (_this.async === false || _this.async == null && !$this.cb_accessed) return jNext.call(this, ret);
       if ($this.cb_attempted) return jCallback.apply(this, $this.cb_attempted);
