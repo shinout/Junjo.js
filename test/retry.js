@@ -15,6 +15,12 @@ function junjo_test() {
     return n;
   })
   .retry(60, function(e, args, count) {
+    T.deepEqual(this.sub, null, "sub in retry");
+    T.deepEqual(this.callback, null, "callback in retry");
+    T.deepEqual(this.callbacks(), null, "callbacks in retry");
+    T.deepEqual(this.absorb(), null, "absorb in retry");
+    T.deepEqual(this.absorbData(), null, "absorbData in retry");
+    T.deepEqual(this.absorbEnd(), null, "absorbEnd in retry");
     T.equal(args[0], this.$.N, "args");
     T.equal(count, ++counter, "count");
     return ++this.$.N;

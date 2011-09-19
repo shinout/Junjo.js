@@ -463,14 +463,14 @@ var Junjo = (function(isNode) {
   $Fn.prototype.retry = function(n, fn, nextTick) {
     n  = (typeof n  == "number") ? n : 1;
     fn = (typeof fn == "function") ? fn : function(e, args) { return args };
-    _(this).retry = { fn: fn, count: n, nextTick: !!nextTick };
+    _(this).retry = { fn: mask(fn), count: n, nextTick: !!nextTick };
     return this;
   };
 
   $Fn.prototype.loop = function(val, nextTick) {
     var _this = _(this);
     if (typeof val == 'number') _this.loop = function(a, r, c) { return c < val };
-    else if (typeof val == 'function') _this.loop = val;
+    else if (typeof val == 'function') _this.loop = mask(val);
     _this.loop.nextTick = !!nextTick;
     return this;
   };
