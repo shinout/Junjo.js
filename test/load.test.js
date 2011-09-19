@@ -1,7 +1,25 @@
 var node = (typeof exports == 'object' && exports === this);
-if (node) {
-  require('../lib/termcolor').define();
-}
+if (node) { require('../lib/termcolor').define() }
+
+var assert = (node) ? require('assert') : {};
+var T = {};
+
+[ 'equal', 'ok', 'fail', 'notEqual', 'deepEqual', 'notDeepEqual', 'strictEqual', 'notStrictEqual']
+.forEach(function(fname) {
+  T[fname] = (function(n) {
+    return function() {
+      try {
+        var name = Array.prototype.pop.call(arguments);
+        assert[n].apply(assert, arguments);
+        console.green('[OK]', n, name);
+      }
+      catch (e) {
+        console.red('[NG]', n, name);
+        console.blue(e.stack);
+      }
+    }
+  })(fname);
+});
 
 function asyncMethod(name, n, cb, e) {
   consolelog(name);
@@ -39,6 +57,7 @@ if (node) {
       that.syncMethod = syncMethod;
       that.consolelog = consolelog;
       that.Junjo = require('../Junjo');
+      that.T = T;
     }
   };
 }

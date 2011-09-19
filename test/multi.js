@@ -12,34 +12,32 @@ function junjo_test() {
   });
 
   $j('2nd', function() {
-    console.log(this.label);
-    console.log(arguments);
+    T.equal(arguments.length, 4, "argument length in " + this.label);
     throw "";
   })
   .fail(function() {
     return Junjo.multi(55,66,777);
   })
   .next('3rd', function() {
-    console.log(this.label);
-    console.log(arguments);
+    T.equal(arguments.length, 3, "argument length in " + this.label);
   })
   .next('4th', function() {
-    console.log(this.label);
     $j.skip('4th2', 88,999);
   })
   .next('4th2', function() {
-    console.log(this.label);
+    T.fail(this.label + " must not be called.");
   })
   .next('5th', function() {
-    console.log(arguments);
+    T.equal(arguments.length, 2, "argument length in " + this.label);
     return Junjo.multi(1,2,3,4);
   })
   .firstError(true)
   .fail(function(e, args) {
+    T.ok(true, this.label + " must fail.");
     return Junjo.multi(5,6,7,8);
   })
   .next('6th', function() {
-    console.log(arguments);
+    T.equal(arguments.length, 4, "argument length in " + this.label);
   })
 
   $j.run();
