@@ -3,6 +3,7 @@ var Junjo = (function(isNode) {
  
   /** utility functions, variables **/
   var A            = Array.prototype,
+      O            = Object.defineProperty,
       empty        = function() {},
       args2arr     = function(args) { return A.map.call(args, function(v) {return v }) },
       nextTick     = (isNode) ? process.nextTick : function(fn) { setTimeout(fn, 0) },
@@ -29,7 +30,7 @@ var Junjo = (function(isNode) {
     if ($j.__proto__) $j.__proto__ = Junjo.prototype;
     else Object.keys(Junjo.prototype).forEach(function(k) { $j[k] = Junjo.prototype[k] });
 
-    Object.defineProperty($j, 'id', { value : ++current_id, writable : false});
+    O($j, 'id', { value : ++current_id, writable : false});
 
     // private properties
     props[$j.id] = {
@@ -278,10 +279,10 @@ var Junjo = (function(isNode) {
 
   /** private class $Fn **/
   var $Fn = function(fn, label, junjo) {
-    Object.defineProperty(this, 'fn', { value : fn, writable : false});
-    Object.defineProperty(this, 'label', { value : label, writable : false});
-    Object.defineProperty(this, 'junjo', { value : junjo, writable: false });
-    Object.defineProperty(this, 'id', { value : junjo.id + '.' + label, writable : false});
+    O(this, 'fn', { value : fn, writable : false});
+    O(this, 'label', { value : label, writable : false});
+    O(this, 'junjo', { value : junjo, writable: false });
+    O(this, 'id', { value : junjo.id + '.' + label, writable : false});
 
     // private properties
     props[this.id] = {
@@ -293,14 +294,14 @@ var Junjo = (function(isNode) {
   // public properties
   // proxy to properties in Junjo
   ['shared', '$', 'err', 'out', 'inputs'].forEach(function(propname) {
-    Object.defineProperty($Fn.prototype, propname, {
+    O($Fn.prototype, propname, {
       get : function()  { return this.junjo[propname] },
       set : function(v) { this.junjo[propname] = v }
     });
   });
 
   ['callback', 'cb'].forEach(function(propname) {
-    Object.defineProperty($Fn.prototype, propname, {
+    O($Fn.prototype, propname, {
       get : function() {
         $(this).cb_accessed = true;
         return jCallback.bind(this);
@@ -309,7 +310,7 @@ var Junjo = (function(isNode) {
     });
   });
 
-  Object.defineProperty($Fn.prototype, 'sub', {
+  O($Fn.prototype, 'sub', {
     get : function() {
       var $this = $(this);
       if (!$this.sub) { this.sub = new Junjo() }
@@ -635,13 +636,13 @@ var Junjo = (function(isNode) {
   };
 
   ['callback', 'cb', 'label'].forEach(function(propname) {
-    Object.defineProperty(Future.prototype, propname, {
+    O(Future.prototype, propname, {
       get: function() { return Future.get.call(this.$j, 'current', [propname]) }, set: empty
     });
   });
 
   ['out', 'err', 'shared', '$', 'args', 'results', 'current'].forEach(function(propname) {
-    Object.defineProperty(Future.prototype, propname, {
+    O(Future.prototype, propname, {
       get: function() { var $j = this.$j;
         return function future() { return Future.get.call($j, propname, arguments) };
       },
