@@ -99,7 +99,7 @@ var Junjo = (function(isNode) {
   // register a function
   Junjo.prototype.register = function() {
     var label = (typeof arguments[0] != 'function') ? A.shift.call(arguments) : undefined;
-    if (arguments[0].constructor == Junjo) {
+    if (Junjo.isJunjo(arguments[0])) {
       $j = arguments[0];
       return this.register(label, getSubFunc($j));
     }
@@ -240,7 +240,7 @@ var Junjo = (function(isNode) {
 
   // JSDeferred-like API
   Junjo.prototype.next = function(j, options) {
-    if (j.constructor == Junjo) return j.after(this);
+    if (Junjo.isJunjo(j)) return j.after(this);
     return new Junjo(j, options).after(this);
   };
 
@@ -302,7 +302,7 @@ var Junjo = (function(isNode) {
       return $this.sub;
     },
     set : function($j) {
-      if ($j.constructor != Junjo) return;
+      if (!Junjo.isJunjo($j)) return;
       var $this = $(this);
       if ($this.mask) return;
       $this.sub = $j;
@@ -375,7 +375,7 @@ var Junjo = (function(isNode) {
     $this.emitterCount++;
     var cb = this.callback;
     emitter.on('end', function() {
-      if (emitter.constructor == Junjo) {
+      if (Junjo.isJunjo(emitter)) {
         $this.absorbs[name] = arguments[1];
         if (arguments[0]) $this.absorbErr = arguments[0];
       }
@@ -650,6 +650,7 @@ var Junjo = (function(isNode) {
 
   Junjo.isNode = isNode;
   Junjo.multi = function() { return arguments };
+  Junjo.isJunjo = function($j) { return $j.constructor == Junjo };
   return Junjo;
 })(typeof exports == 'object' && exports === this);
 
