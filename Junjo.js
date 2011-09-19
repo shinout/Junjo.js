@@ -300,15 +300,27 @@ var Junjo = (function(isNode) {
     });
   });
 
-  ['callback', 'cb'].forEach(function(propname) {
-    O($Fn.prototype, propname, {
-      get : function() {
-        $(this).cb_accessed = true;
-        return jCallback.bind(this);
-      },
-      set : empty
-    });
+  ['callback', 'cb'].forEach(function(p) {
+    O($Fn.prototype, p, { get : function() { return this.callbacks(0) }, set : empty });
   });
+
+  $Fn.prototype.callbacks = function(key) {
+    var $this = $(this);
+    $this.cb_accessed = true;
+    key = getCallbackName(key, $this);
+    if ($this.cb_results[key] === undefined) {
+      $this.cb_count++;
+      $this.cb_results[key] = null;
+    }
+    return jCallback.bind(this, key);
+  };
+
+  var getCallbackName = function(key, $this) {
+    if (key != null) return key;
+    key = $this.cb_count;
+    while ($this.cb_results[key] !== undefined) { key++ }
+    return key;
+  };
 
   O($Fn.prototype, 'sub', {
     get : function() {
@@ -500,13 +512,15 @@ var Junjo = (function(isNode) {
 
   var jResetState = function(prevState) {
     variables[this.id] = {
-      args         : [],                    // arguments passed to this.execute()
-      emitterCount : 0,                     // event emitters (name => emitter)
-      absorbs      : {},                    // absorbed data from emitters (name => absorbed data)
-      absorbErr    : null,                  // absorbed error from emitters
-      done         : false,                 // execution ended or not
-      cb_accessed  : false,                 // whether callback is accessed via "this.callback", this means asynchronous.
-      cb_called    : false                  // whether callback is called or not.
+      args         : [],    // arguments passed to this.execute()
+      emitterCount : 0,     // event emitters (name => emitter)
+      absorbs      : {},    // absorbed data from emitters (name => absorbed data)
+      absorbErr    : null,  // absorbed error from emitters
+      done         : false, // execution ended or not
+      finished     : false, // whether jNext is normally finished called or not.
+      cb_accessed  : false, // whether callback is accessed or not
+      cb_count     : 0,
+      cb_results   : {}
     };
     if (!prevState) return;
     Object.keys(prevState).forEach(function(k) { variables[this.id][k] = prevState[k] }, this);
@@ -547,14 +561,14 @@ var Junjo = (function(isNode) {
       if (typeof _this.pre == 'function') $this.args = _this.pre.apply(_this.scope || this, $this.args);
       var ret = this.fn.apply(_this.scope || this, $this.args); // execution
       $this.done = true;
-      if (isSync(this)) return jNext.call(this, ret);
+      if (_this.async === false || _this.async == null && !$this.cb_accessed) return jNext.call(this, ret);
       if ($this.cb_attempted) return jCallback.apply(this, $this.cb_attempted);
       if (!jInheritValue.call(this, 'timeout')) return;
 
       var self = this;
       var timeout = jInheritValue.call(this, 'timeout');
       $this.timeout_id = setTimeout(function() {
-        if (!$this.cb_called) {
+        if (!$this.finished) {
           $this.done = true;
           jFail.call(self, new Error('callback wasn\'t called within '+ timeout +' [sec] in function ' + self.label + '.' ));
         }
@@ -566,10 +580,8 @@ var Junjo = (function(isNode) {
     }
   };
 
-  var isSync = function($fn) { return (_($fn).async === false || _($fn).async == null && !$($fn).cb_accessed) };
-
   var jFail = function(e, called) {
-    if ($(this).cb_called) return;
+    if ($(this).finished) return;
     var $this = $(this), self = this;
     var _retry = _(this).retry;
     if (_retry) {
@@ -594,9 +606,11 @@ var Junjo = (function(isNode) {
 
   var jCallback = function() {
     var $this = $(this);
-    if ($this.cb_called) return;
+    if ($this.finished) return;
     if (!$this.done) return $this.cb_attempted = arguments;
-
+    var key = A.shift.call(arguments);
+    $this.cb_results[key] = arguments;
+    if (--$this.cb_count > 0) return;
     return jNext.call(this, arguments);
   };
 
@@ -604,7 +618,7 @@ var Junjo = (function(isNode) {
   var jNext = function(result, skipFailCheck) {
     try {
       var _this = _(this), $this = $(this), _junjo = _(this.junjo);
-      if ($this.cb_called) return;
+      if ($this.finished) return;
 
       var fsterr = jInheritValue.call(this, 'firstError');
       if (fsterr && is_arguments(result)) {
@@ -621,7 +635,7 @@ var Junjo = (function(isNode) {
           : jExecute.call(this, args, {loop: l}, true);
       }
       if (typeof _this.post == 'function') { result = _this.post.apply(this, is_arguments(result) ? result : [result]) }
-      $this.cb_called = true;
+      $this.finished = true;
     }
     catch (e) { if (!skipFailCheck) return jFail.call(this, e) }
     setResult.call(this.junjo, this, result);
