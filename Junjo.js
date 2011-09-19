@@ -264,7 +264,6 @@ var Junjo = (function(isNode) {
   var setResult = function($fn, result) {
     var $this = $(this);
     $this.finished++;
-
     $this.results[$fn.label] = result;
     finishCheck.call(this);
   };
@@ -279,13 +278,13 @@ var Junjo = (function(isNode) {
 
   /** "this" scope in functions **/
   var $Scope = function($fn) { O(this, '$fn', { value : $fn, writable : false}) };
+  $Scope.proto = {};
 
-  // public properties of $Scope
   ['label', 'junjo', 'fn', 'id']
   .forEach(function(p) { O($Scope.prototype, p, { get : function() { return this.$fn[p] }, set: empty }) });
 
   ['shared', '$', 'err', 'out', 'inputs'].forEach(function(p) {
-    O($Scope.prototype, p, { get : function()  { return this.$fn.junjo[p] }, set : function(v) { this.$fn.junjo[p] = v } });
+    O($Scope.prototype, p, { get : function() { return this.$fn.junjo[p] }, set : function(v) { this.$fn.junjo[p] = v } });
   });
 
   ['callback', 'cb']
@@ -294,20 +293,21 @@ var Junjo = (function(isNode) {
   O($Scope.prototype, 'sub', {
     get : function() {
       var $this = $(this);
+      if ($this.mask) return null;
       if (!$this.sub) { this.sub = new Junjo() }
       return $this.sub;
     },
     set : function($j) {
       if ($j.constructor != Junjo) return;
-      var $this = $(this), cb = this.callback;
+      var $this = $(this);
+      if ($this.mask) return;
       $this.sub = $j;
-      // $this.sub.on('end', function() {cb($this.sub.err, $this.sub.out)});
       this.absorbEnd($this.sub, 'sub', true);
       nextTick(function() { $this.sub.run.apply($this.sub, $this.args) });
     }
   });
 
-  $Scope.prototype.callbacks = function(key) {
+  $Scope.proto.callbacks = function(key) {
     var $this = $(this);
     $this.cb_accessed = true;
     key = getCallbackName(key, $this);
@@ -325,7 +325,7 @@ var Junjo = (function(isNode) {
     return key;
   };
 
-  $Scope.prototype.absorb = function(emitter, evtname, fn, name) {
+  $Scope.proto.absorb = function(emitter, evtname, fn, name) {
     var self = this, $this = $(this);
     name || (name = $this.emitterCount.toString());
     emitter.on(evtname, function() {
@@ -341,7 +341,7 @@ var Junjo = (function(isNode) {
     return this.absorbEnd(emitter, name);
   };
 
-  $Scope.prototype.absorbError = function(emitter, evtname) {
+  $Scope.proto.absorbError = function(emitter, evtname) {
     var self = this, $this = $(this);
     var err = '';
     var fn = (typeof arguments[2] == 'function') ? A.splice.call(arguments, 2, 1): function(e) {
@@ -364,7 +364,7 @@ var Junjo = (function(isNode) {
     return this.absorbEnd(emitter, name);
   };
 
-  $Scope.prototype.absorbEnd = function(emitter, name, isSub) {
+  $Scope.proto.absorbEnd = function(emitter, name, isSub) {
     if (name == 'sub' && !isSub) throw new Error("name must not be 'sub'.");
     var $this = $(this);
     name || (name = $this.emitterCount.toString());
@@ -382,7 +382,7 @@ var Junjo = (function(isNode) {
     return this;
   };
 
-  $Scope.prototype.absorbData = function(emitter, evtname, name) {
+  $Scope.proto.absorbData = function(emitter, evtname, name) {
     var $this = $(this);
     name || (name = $this.emitterCount.toString());
     $this.absorbs[name] = '';
@@ -391,7 +391,10 @@ var Junjo = (function(isNode) {
       return result + data.toString();
     }, name);
   };
-  $Scope.prototype.gather = $Scope.prototype.absorbData;
+  $Scope.proto.gather = $Scope.proto.absorbData;
+
+  Object.keys($Scope.proto)
+  .forEach(function(k) { $Scope.prototype[k] = function() { return (!$(this).mask) ? $Scope.proto[k].apply(this, arguments) : null } });
 
   /** $Fn : registered function in Junjo  **/
   var $Fn = function(fn, label, junjo) {
@@ -425,8 +428,9 @@ var Junjo = (function(isNode) {
   $Fn.prototype.timeout = function(v) { if (typeof v == "number") _(this).timeout = v; return this };
   $Fn.prototype.sync  = function(bool) { _(this).async = (bool === undefined) ? false : !bool; return this };
   $Fn.prototype.async = function(bool) { _(this).async = (bool === undefined) ? true : !!bool; return this };
-  $Fn.prototype.pre  = function(fn) { _(this).pre  = fn };
-  $Fn.prototype.post = function(fn) { _(this).post = fn };
+  $Fn.prototype.pre  = function(fn) { _(this).pre  = mask(fn); return this };
+  $Fn.prototype.post = function(fn) { _(this).post = mask(fn); return this };
+  var mask = function(fn) { return function() { $(this).mask = true; var r = fn.apply(this, arguments); $(this).mask = false; return r } }
 
   $Fn.prototype.firstError = function(val) {
     if (val != SHIFT && val !== false) val = true;
@@ -491,6 +495,7 @@ var Junjo = (function(isNode) {
       cb_accessed  : false, // whether callback is accessed or not
       cb_count     : 0,
       cb_results   : {},
+      mask         : false,
       $scope       : new $Scope(this) // "this" in the functioin
     };
     if (!prevState) return;
@@ -528,7 +533,7 @@ var Junjo = (function(isNode) {
         if (l.finished) return jNext.call(this, l.result);
       }
 
-      if (typeof _this.pre == 'function') $this.args = _this.pre.apply(_this.scope || $this.$scope, $this.args);
+      if (typeof _this.pre == 'function') $this.args = _this.pre.apply($this.$scope, $this.args);
       var ret = this.fn.apply(_this.scope || $this.$scope, $this.args); // execution
       $this.done = true;
       if (_this.async === false || _this.async == null && !$this.cb_accessed) return jNext.call(this, ret);
@@ -601,7 +606,8 @@ var Junjo = (function(isNode) {
           ? nextTick(function() { jExecute.call(self, args, {loop: l}, true) })
           : jExecute.call(this, args, {loop: l}, true);
       }
-      if (typeof _this.post == 'function') { result = _this.post.apply($this.$scope, is_arguments(result) ? result : [result]) }
+      if (typeof _this.post == 'function') 
+        result = _this.post.apply($this.$scope, is_arguments(result) ? result : [result]);
       $this.finished = true;
     }
     catch (e) { if (!skipFailCheck) return jFail.call(this, e) }
@@ -616,16 +622,14 @@ var Junjo = (function(isNode) {
     return (this.running) ? kp.get() : kp;
   };
 
-  ['callback', 'cb', 'label'].forEach(function(propname) {
-    O(Future.prototype, propname, {
-      get: function() { return Future.get.call(this.$j, 'current', [propname]) }, set: empty
-    });
+  ['callback', 'cb', 'label'].forEach(function(p) {
+    O(Future.prototype, p, { get: function() { return Future.get.call(this.$j, 'current', [p]) }, set: empty });
   });
 
-  ['out', 'err', 'shared', '$', 'args', 'results', 'current'].forEach(function(propname) {
-    O(Future.prototype, propname, {
+  ['out', 'err', 'shared', '$', 'args', 'results', 'current'].forEach(function(p) {
+    O(Future.prototype, p, {
       get: function() { var $j = this.$j;
-        return function future() { return Future.get.call($j, propname, arguments) };
+        return function future() { return Future.get.call($j, p, arguments) };
       },
       set: empty
     });
