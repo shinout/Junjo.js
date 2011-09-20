@@ -7,7 +7,7 @@ var Junjo = (function(isNode) {
       empty        = function() {},
       args2arr     = function(args) { return A.map.call(args, function(v) {return v }) },
       nextTick     = (isNode) ? process.nextTick : function(fn) { setTimeout(fn, 0) },
-      is_arguments = function(v) { return v && v.callee },
+      is_arguments = function(v) { return !!(v && v.callee) },
       getSubFunc   = function($j) { return function() { this.sub = $j } },
       SHIFT        = 'shift';
 
@@ -311,9 +311,9 @@ var Junjo = (function(isNode) {
     var $this = $(this);
     $this.cb_accessed = true;
     key = getCallbackName(key, $this);
-    if ($this.cb_results[key] === undefined) {
+    if ($this.cb_keys[key] === undefined) {
       $this.cb_count++;
-      $this.cb_results[key] = null;
+      $this.cb_keys[key] = 1;
     }
     return jCallback.bind(this, key);
   };
@@ -321,7 +321,7 @@ var Junjo = (function(isNode) {
   var getCallbackName = function(key, $this) {
     if (key != null) return key;
     key = $this.cb_count;
-    while ($this.cb_results[key] !== undefined) { key++ }
+    while ($this.cb_keys[key] !== undefined) { key++ }
     return key;
   };
 
@@ -428,8 +428,8 @@ var Junjo = (function(isNode) {
   $Fn.prototype.timeout = function(v) { if (typeof v == "number") _(this).timeout = v; return this };
   $Fn.prototype.sync  = function(bool) { _(this).async = (bool === undefined) ? false : !bool; return this };
   $Fn.prototype.async = function(bool) { _(this).async = (bool === undefined) ? true : !!bool; return this };
-  $Fn.prototype.pre  = function(fn) { _(this).pre  = mask(fn); return this };
-  $Fn.prototype.post = function(fn) { _(this).post = mask(fn); return this };
+  ['pre', 'post', 'reduce']
+  .forEach(function(p) { $Fn.prototype[p] = function(fn) { if (typeof fn == 'function') { _(this)[p] = mask(fn) } return this } });
   var mask = function(fn) { return function() { $(this).mask = true; var r = fn.apply(this, arguments); $(this).mask = false; return r } }
 
   $Fn.prototype.firstError = function(val) {
@@ -487,7 +487,8 @@ var Junjo = (function(isNode) {
       finished     : false, // whether jNext is normally finished called or not.
       cb_accessed  : false, // whether callback is accessed or not
       cb_count     : 0,
-      cb_results   : {},
+      cb_keys      : {},    // key => 1
+      result       : null,
       mask         : false,
       $scope       : new $Scope(this) // "this" in the functioin
     };
@@ -526,7 +527,7 @@ var Junjo = (function(isNode) {
         if (l.finished) return jNext.call(this, l.result);
       }
 
-      if (typeof _this.pre == 'function') $this.args = _this.pre.apply($this.$scope, $this.args);
+      if (_this.pre) $this.args = _this.pre.apply($this.$scope, $this.args);
       var ret = this.fn.apply(_this.scope || $this.$scope, $this.args); // execution
       $this.done = true;
       if (_this.async === false || _this.async == null && !$this.cb_accessed) return jNext.call(this, ret);
@@ -574,9 +575,13 @@ var Junjo = (function(isNode) {
     if ($this.finished) return;
     if (!$this.done) return $this.cb_attempted = arguments;
     var key = A.shift.call(arguments);
-    $this.cb_results[key] = arguments;
+    if (_(this).reduce) {
+      var v = _(this).reduce.call($this.$scope, $this.result, arguments, key)
+      $this.result =  (v !== undefined) ? v : $this.result;
+    }
+    else $this.result = arguments;
     if (--$this.cb_count > 0) return;
-    return jNext.call(this, arguments);
+    return jNext.call(this, $this.result);
   };
 
   // call next functions
@@ -599,8 +604,7 @@ var Junjo = (function(isNode) {
           ? nextTick(function() { jExecute.call(self, args, {loop: l}, true) })
           : jExecute.call(this, args, {loop: l}, true);
       }
-      if (typeof _this.post == 'function') 
-        result = _this.post.apply($this.$scope, is_arguments(result) ? result : [result]);
+      if (_this.post) result = _this.post.apply($this.$scope, is_arguments(result) ? result : [result]);
       $this.finished = true;
     }
     catch (e) { if (!skipFailCheck) return jFail.call(this, e) }
