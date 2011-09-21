@@ -648,8 +648,9 @@ var Junjo = (function(isNode) {
     return (v instanceof KeyPath) ? v.get() : (typeof v == 'function' && v.name == 'future') ? v() : v;
   };
 
-  Junjo.isNode = isNode;
-  Junjo.multi = function() { return arguments };
+  Junjo.isNode  = isNode;
+  Junjo.multi   = function() { return arguments };
+  Junjo.args    = Junjo.multi;
   Junjo.isJunjo = function($j) { return $j.constructor == Junjo };
   return Junjo;
 })(typeof exports == 'object' && exports === this);
