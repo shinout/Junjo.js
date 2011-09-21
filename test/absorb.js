@@ -64,6 +64,6 @@ function junjo_test() {
     T.strictEqual(out["sub"], 'Yeah!', "out.sub");
   });
 
-  $j2.after($j);
+  $j.next($j2);
   $j.run();
 }

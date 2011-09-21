@@ -175,15 +175,11 @@ var Junjo = (function(isNode) {
     return this;
   };
 
-  // set another Junjo object which executes before this.
-  Junjo.prototype.after = function(jn) {
-    var self = this, $this = $(this);
-    jn.on('end', function(err, out) {
-      $this.runnable = true;
-      self.run(err, out);
-    });
-    $this.runnable = false;
-    return this;
+  // set another Junjo object which executes after this
+  Junjo.prototype.next = function(jn, options) {
+    if (!Junjo.isJunjo(jn)) jn = new Junjo(jn, options);
+    this.on('end', function(err, out) { jn.run(err, out) });
+    return jn;
   };
 
   // copy this and create new Junjo
@@ -228,12 +224,6 @@ var Junjo = (function(isNode) {
     finishCheck.call(this);
 
     return ($(this).ended && _(this).result) ? this.out : this;
-  };
-
-  // JSDeferred-like API
-  Junjo.prototype.next = function(j, options) {
-    if (Junjo.isJunjo(j)) return j.after(this);
-    return new Junjo(j, options).after(this);
   };
 
   /** private functions **/
