@@ -600,7 +600,10 @@ var Junjo = (function(isNode) {
           ? nextTick(function() { jExecute.call(self, args, {loop: l}, true) })
           : jExecute.call(this, args, {loop: l}, true);
       }
-      if (_this.post) result = _this.post.apply($this.$scope, is_arguments(result) ? result : [result]);
+      if (_this.post) {
+        var postResult = _this.post.apply($this.$scope, is_arguments(result) ? result : [result]);
+        if (postResult !== undefined) result = postResult;
+      }
       $this.finished = true;
     }
     catch (e) { if (!skipFailCheck) return jFail.call(this, e) }

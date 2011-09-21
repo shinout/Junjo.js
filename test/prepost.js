@@ -33,6 +33,13 @@ function junjo_test() {
   })
   .next(function(title) {
     T.equal(title, 'hello world');
+    return "aaaaa";
+  })
+  .post(function(v) {
+    T.equal(v, 'aaaaa');
+  })
+  .next(function(v) {
+    T.equal(v, 'aaaaa');
   });
 
   $j.run("index.html", { title: "hello"});
