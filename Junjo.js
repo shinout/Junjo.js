@@ -175,10 +175,6 @@ var Junjo = (function(isNode) {
     return this;
   };
 
-  // set synchronous/asynchronous $fn
-  Junjo.prototype.sync  = function() { return this.register.apply(this, arguments).sync() };
-  Junjo.prototype.async = function() { return this.register.apply(this, arguments).async() };
-
   // set another Junjo object which executes before this.
   Junjo.prototype.after = function(jn) {
     var self = this, $this = $(this);

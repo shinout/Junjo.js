@@ -23,7 +23,7 @@ function junjo_test() {
     $j.$.abc = "ABC";
   }).scope({hoge: 'FugaFuga'});
 
-  $j.async('3rd', function() {
+  $j('3rd', function() {
     asyncMethod(this.label, 5, this.callback);
     T.equal(this.shared.hoge, 'HogeHoge');
     T.equal(this.shared.abc, 'ABC');
@@ -55,7 +55,7 @@ function junjo_test() {
   T.equal($j.get('6th').label, '6th');
   T.equal($j.get('7th').label, '7th');
 
-  $j.async('8th', function() {
+  $j('8th', function() {
     T.equal(this.inputs.length, 1, "inputs");
     this.inputs[0] = "JJJJJJ";
     T.equal(this.inputs.length, 1, "inputs");
@@ -67,10 +67,10 @@ function junjo_test() {
     return Junjo.multi(e, o);
   });
 
-  $j.sync('9th', syncMethod).params('9th').after('5th');
+  $j('9th', syncMethod).params('9th').after('5th');
 
-  $j.sync(syncMethod).params($j.future.args(0)).after('9th');
-  $j.sync(syncMethod).params($j.future.results('9th')).after('9th')
+  $j(syncMethod).params($j.future.args(0)).after('9th');
+  $j(syncMethod).params($j.future.results('9th')).after('9th')
   .next('10th', function() {
     return syncMethod(this.label + " using next()");
   });
