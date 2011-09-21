@@ -4,7 +4,7 @@ var Junjo = (function(isNode) {
   /** utility functions, variables **/
   var A            = Array.prototype,
       O            = Object.defineProperty,
-      empty        = function() {},
+      E            = function() {},
       args2arr     = function(args) { return A.map.call(args, function(v) {return v }) },
       nextTick     = (isNode) ? process.nextTick : function(fn) { setTimeout(fn, 0) },
       is_arguments = function(v) { return !!(v && v.callee) },
@@ -54,12 +54,12 @@ var Junjo = (function(isNode) {
 
   /** public properties, defined in Junjo.prototype **/
   Object.defineProperties(Junjo.prototype, {
-    current  : { get : function () { return $(this).current }, set: empty },
-    runnable : { get : function () { return $(this).runnable && !$(this).running }, set : empty },
-    running  : { get : function () { return $(this).running }, set : empty },
-    size     : { get : function () { return _(this).$fns.length }, set : empty },
+    current  : { get : function () { return $(this).current }, set: E },
+    runnable : { get : function () { return $(this).runnable && !$(this).running }, set : E },
+    running  : { get : function () { return $(this).running }, set : E },
+    size     : { get : function () { return _(this).$fns.length }, set : E },
     $        : { get : function () { return this.shared }, set : function(v) { this.shared = v } },
-    inputs   : { get : function () { return $(this).inputs }, set : empty },
+    inputs   : { get : function () { return $(this).inputs }, set : E },
 
     timeout : {
       get : function() { return (_(this).timeout != null) ? _(this).timeout : 5 },
@@ -85,8 +85,8 @@ var Junjo = (function(isNode) {
       writable : false
     },
 
-    callback : { get : function() { return this.future.callback }, set : empty },
-    cb       : { get : function() { return this.future.callback }, set : empty },
+    callback : { get : function() { return this.future.callback }, set : E },
+    cb       : { get : function() { return this.future.callback }, set : E },
   });
 
   // Junjo extends Function prototype
@@ -253,7 +253,7 @@ var Junjo = (function(isNode) {
     };
     /** reset common properties **/
     this.err    = null;      // error to pass to the "end" event
-    this.out    = new empty; // final output to pass to the "end" event
+    this.out    = new E; // final output to pass to the "end" event
     this.shared = {};        // shared values within $fns
   };
 
@@ -268,7 +268,7 @@ var Junjo = (function(isNode) {
     var _this = _(this), $this = $(this);
     if ($this.finished < _this.$fns.length || $this.ended) return;
     $this.ended = true;
-    if (this.out instanceof empty && !Object.keys(this.out).length) this.out = $this.results;
+    if (this.out instanceof E && !Object.keys(this.out).length) this.out = $this.results;
     this.emit('end', this.err, this.out);
   };
 
@@ -277,14 +277,14 @@ var Junjo = (function(isNode) {
   $Scope.proto = {};
 
   ['label', 'junjo', 'fn', 'id']
-  .forEach(function(p) { O($Scope.prototype, p, { get : function() { return this.$fn[p] }, set: empty }) });
+  .forEach(function(p) { O($Scope.prototype, p, { get : function() { return this.$fn[p] }, set: E }) });
 
   ['shared', '$', 'err', 'out', 'inputs'].forEach(function(p) {
     O($Scope.prototype, p, { get : function() { return this.$fn.junjo[p] }, set : function(v) { this.$fn.junjo[p] = v } });
   });
 
   ['callback', 'cb']
-  .forEach(function(p) { O($Scope.prototype, p, { get : function() { return this.callbacks(0) }, set : empty }) });
+  .forEach(function(p) { O($Scope.prototype, p, { get : function() { return this.callbacks(0) }, set : E }) });
 
   O($Scope.prototype, 'sub', {
     get : function() {
@@ -619,7 +619,7 @@ var Junjo = (function(isNode) {
   };
 
   ['callback', 'cb', 'label'].forEach(function(p) {
-    O(Future.prototype, p, { get: function() { return Future.get.call(this.$j, 'current', [p]) }, set: empty });
+    O(Future.prototype, p, { get: function() { return Future.get.call(this.$j, 'current', [p]) }, set: E });
   });
 
   ['out', 'err', 'shared', '$', 'args', 'results', 'current'].forEach(function(p) {
@@ -627,7 +627,7 @@ var Junjo = (function(isNode) {
       get: function() { var $j = this.$j;
         return function future() { return Future.get.call($j, p, arguments) };
       },
-      set: empty
+      set: E
     });
   });
 
