@@ -108,39 +108,6 @@ var Junjo = (function(isNode) {
     return _this.after ? $fn.after() : $fn;
   };
 
-  // get results of each process.
-  Junjo.prototype.results = function() {
-    return (!arguments.length) ? $(this).results : KeyPath.get($(this).results, arguments, this);
-  };
-
-  Junjo.prototype.args = function() { return this.current ? KeyPath.get($(this.current).args, arguments, this.current) : null };
-
-  // terminate whole process
-  Junjo.prototype.terminate = function() {
-    _(this).$fns.forEach(function($fn) { this.skip($fn.label) }, this);
-  };
-
-  // emitting event asynchronously. The similar way as EventEmitter in Node.js
-  Junjo.prototype.emit = function() {
-    var evtname   = A.shift.call(arguments);
-    var listeners = _(this).listeners[evtname] || [];
-    var args = arguments, self = this;
-    listeners.forEach(function(listener) {
-      nextTick(function() { listener.apply(self, args) });
-    });
-  };
-
-  // set eventListener
-  Junjo.prototype.on = function(evtname, fn) {
-    if (evtname == 'end' && $(this).ended) {
-      var self = this;
-      return nextTick(function() { fn.call(self, self.err, self.out) }); // pseudo onEnd
-    }
-    if (! (_(this).listeners[evtname] instanceof Array)) _(this).listeners[evtname] = [];
-    _(this).listeners[evtname].push(fn);
-    return this;
-  };
-
   // get $fn by label
   Junjo.prototype.get = function(lbl) { var _this = _(this); return _this.$fns[_this.labels[lbl]] };
 
@@ -172,6 +139,39 @@ var Junjo = (function(isNode) {
   // add catcher to all the functions registered previously, except those already have a catcher.
   Junjo.prototype.catchesAbove = function(fn) {
     _(this).$fns.forEach(function($fn) { if (!_($fn).catcher) _($fn).catcher = fn });
+    return this;
+  };
+
+  // get results of each process.
+  Junjo.prototype.results = function() {
+    return (!arguments.length) ? $(this).results : KeyPath.get($(this).results, arguments, this);
+  };
+
+  Junjo.prototype.args = function() { return this.current ? KeyPath.get($(this.current).args, arguments, this.current) : null };
+
+  // terminate whole process
+  Junjo.prototype.terminate = function() {
+    _(this).$fns.forEach(function($fn) { this.skip($fn.label) }, this);
+  };
+
+  // emitting event asynchronously. The similar way as EventEmitter in Node.js
+  Junjo.prototype.emit = function() {
+    var evtname   = A.shift.call(arguments);
+    var listeners = _(this).listeners[evtname] || [];
+    var args = arguments, self = this;
+    listeners.forEach(function(listener) {
+      nextTick(function() { listener.apply(self, args) });
+    });
+  };
+
+  // set eventListener
+  Junjo.prototype.on = function(evtname, fn) {
+    if (evtname == 'end' && $(this).ended) {
+      var self = this;
+      return nextTick(function() { fn.call(self, self.err, self.out) }); // pseudo onEnd
+    }
+    if (! (_(this).listeners[evtname] instanceof Array)) _(this).listeners[evtname] = [];
+    _(this).listeners[evtname].push(fn);
     return this;
   };
 
@@ -210,8 +210,12 @@ var Junjo = (function(isNode) {
     var args = arguments, $fns = _this.$fns;
     $this.inputs = args;
     Object.freeze($this.inputs);
+
+    // topological sort
+    var visited = {};
     $fns.forEach(function($fn) {
-      _($fn).befores.forEach(function(lbl) {
+      var befores = _($fn).befores;
+      befores.forEach(function(lbl) {
         var before = this.get(lbl);
         if (!before) throw new Error('label ' + lbl + ' is not registered. in label ' + $fn.label);
         if ( !$this.afters[before.label]) $this.afters[before.label] = [];
@@ -219,6 +223,17 @@ var Junjo = (function(isNode) {
       }, this);
       $this.counters[$fn.label] = _($fn).befores.length;
     }, this);
+
+    $fns.forEach(function visit($fn, ancestors) {
+      if (visited[$fn.label]) return;
+      if (!Array.isArray(ancestors)) ancestors = [];
+      ancestors.push($fn.label);
+      visited[$fn.label] = true;
+      if ($this.afters[$fn.label]) $this.afters[$fn.label].forEach(function($ch) {
+        if (ancestors.indexOf($ch.label) >= 0) throw new Error('closed chain:' +  $ch.label + ' is in ' + $fn.label);
+        visit($ch, args2arr(ancestors));
+      });
+    });
 
     $fns.forEach(function($fn) { jExecute.call($fn, args2arr(args)) });
     finishCheck.call(this);
