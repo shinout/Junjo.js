@@ -34,9 +34,9 @@ var Junjo = (function(isNode) {
 
     // private properties
     props[$j.id] = {
-      $fns         : [],    // registered functions
-      labels       : {},    // {label => position of $fns}
-      afters       : {},    // list of labels of functions executing after the function with label of the key (label => $fn)
+      $ops         : [],    // registered operations
+      labels       : {},    // {label => position of $ops}
+      afters       : {},    // list of labels of functions executing after the function with label of the key (label => op)
       listeners    : {},    // eventlisteners
       result       : false  // if true and all processes are synchronous, return result at $j.run()
     };
@@ -56,7 +56,7 @@ var Junjo = (function(isNode) {
     ready    : { get : function () { return !!_(this).ready }, set : E },
     running  : { get : function () { return this.ready && $(this).running }, set : E },
     ended    : { get : function () { return this.ready && $(this).ended }, set : E },
-    size     : { get : function () { return _(this).$fns.length }, set : E },
+    size     : { get : function () { return _(this).$ops.length }, set : E },
     $        : { get : function () { return this.shared }, set : function(v) { this.shared = v } },
     inputs   : { get : function () { return $(this).inputs }, set : E },
 
@@ -97,22 +97,22 @@ var Junjo = (function(isNode) {
 
     var _this = _(this);
     if (_this.labels[label]) throw new Error('label ' + label + ' is already exists.');
-    if (label == undefined) { label = _this.$fns.length; while (_this.labels[label]) { label++ } }
+    if (label == undefined) { label = _this.$ops.length; while (_this.labels[label]) { label++ } }
 
-    var $fn = new $Fn(arguments[0], label, this);
-    _this.labels[label] = _this.$fns.push($fn) -1;
-    return _this.after ? $fn.after() : $fn;
+    var $op = new Operation(arguments[0], label, this);
+    _this.labels[label] = _this.$ops.push($op) -1;
+    return _this.after ? $op.after() : $op;
   };
 
-  // remove $fn by label
+  // remove $op by label
   Junjo.prototype.remove = function(lbl) {
-    var $fn   = getOperation.call(this, lbl), _this = _(this);
+    var $op   = getOperation.call(this, lbl), _this = _(this);
     var num   = _this.labels[lbl];
-    _this.$fns.splice(num, 1);
+    _this.$ops.splice(num, 1);
     delete _this.labels[lbl];
-    D($fn);
-    for (var i=num, l=_this.$fns.length; i<l; i++) {
-      _this.labels[_this.$fns[i].label] = i;
+    D($op);
+    for (var i=num, l=_this.$ops.length; i<l; i++) {
+      _this.labels[_this.$ops[i].label] = i;
     }
     return this;
   };
@@ -121,17 +121,17 @@ var Junjo = (function(isNode) {
   Junjo.prototype.catches = function() {
     var fn = A.pop.call(arguments), _this = _(this);
     if (!arguments.length) {
-      if (_this.$fns.length) _(_this.$fns[_this.$fns.length-1]).catcher = fn;
+      if (_this.$ops.length) _(_this.$ops[_this.$ops.length-1]).catcher = fn;
     }
     else {
-      A.forEach.call(arguments, function(lbl) { if ($fn = getOperation.call(this, lbl)) _($fn).catcher = fn }, this);
+      A.forEach.call(arguments, function(lbl) { if ($op = getOperation.call(this, lbl)) _($op).catcher = fn }, this);
     }
     return this;
   };
 
   // add catcher to all the functions registered previously, except those already have a catcher.
   Junjo.prototype.catchesAbove = function(fn) {
-    _(this).$fns.forEach(function($fn) { if (!_($fn).catcher) _($fn).catcher = fn });
+    _(this).$ops.forEach(function($op) { if (!_($op).catcher) _($op).catcher = fn });
     return this;
   };
 
@@ -139,10 +139,10 @@ var Junjo = (function(isNode) {
   Junjo.prototype.clone = function() {
     var $j = new Junjo(), _this = _(this), _that = _($j);
     Object.keys(_this).forEach(function(k) { _that[k] = _this[k] });
-    _this.$fns.forEach(function($fn, k) {
-      _that.$fns[k] = new $Fn($fn.fn, $fn.label, $j);
-      var _$fn = _($fn), _$new = _(_that.$fns[k]);
-      Object.keys(_($fn)).forEach(function(i) { _$new[k] = _$fn[k] });
+    _this.$ops.forEach(function($op, k) {
+      _that.$ops[k] = new Operation($op.fn, $op.label, $j);
+      var _$op = _($op), _$new = _(_that.$ops[k]);
+      Object.keys(_($op)).forEach(function(i) { _$new[k] = _$op[k] });
     });
     if (_that.ready) resetState.call($j);
     return $j;
@@ -152,7 +152,7 @@ var Junjo = (function(isNode) {
   Junjo.prototype.results = function(lbl) { return (lbl) ? $(this).results[lbl] : $(this).results };
 
   // terminate whole process
-  Junjo.prototype.terminate = function() { _(this).$fns.forEach(function($fn) { this.skip($fn.label) }, this) };
+  Junjo.prototype.terminate = function() { _(this).$ops.forEach(function($op) { this.skip($op.label) }, this) };
 
   // emitting event asynchronously. The similar way as EventEmitter in Node.js
   Junjo.prototype.emit = function() {
@@ -189,28 +189,28 @@ var Junjo = (function(isNode) {
   };
 
   Junjo.prototype.prepare = function() {
-    var  _this = _(this), $fns = _this.$fns, visited = {};
+    var  _this = _(this), $ops = _this.$ops, visited = {};
     if (_this.ready) return this;
 
-    _this.entries = $fns.filter(function($fn) {
-      var befores = _($fn).befores;
+    _this.entries = $ops.filter(function($op) {
+      var befores = _($op).befores;
       befores.forEach(function(lbl) {
         var before = getOperation.call(this, lbl);
-        if (!before) throw new Error('label ' + lbl + ' is not registered. in label ' + $fn.label);
+        if (!before) throw new Error('label ' + lbl + ' is not registered. in label ' + $op.label);
         if ( !_this.afters[before.label]) _this.afters[before.label] = [];
-        _this.afters[before.label].push($fn);
+        _this.afters[before.label].push($op);
       }, this);
       return befores.length == 0;
     }, this);
 
     // topological sort to operations
-    $fns.forEach(function visit($fn, ancestors) {
-      if (visited[$fn.label]) return;
+    $ops.forEach(function visit($op, ancestors) {
+      if (visited[$op.label]) return;
       if (!Array.isArray(ancestors)) ancestors = [];
-      ancestors.push($fn.label);
-      visited[$fn.label] = true;
-      if (_this.afters[$fn.label]) _this.afters[$fn.label].forEach(function($ch) {
-        if (ancestors.indexOf($ch.label) >= 0) throw new Error('closed chain:' +  $ch.label + ' is in ' + $fn.label);
+      ancestors.push($op.label);
+      visited[$op.label] = true;
+      if (_this.afters[$op.label]) _this.afters[$op.label].forEach(function($ch) {
+        if (ancestors.indexOf($ch.label) >= 0) throw new Error('closed chain:' +  $ch.label + ' is in ' + $op.label);
         visit($ch, args2arr(ancestors));
       });
     });
@@ -221,7 +221,7 @@ var Junjo = (function(isNode) {
     return this;
   };
 
-   // run all the registered $fn
+   // run all the registered operations
   Junjo.prototype.run = function() {
     if (!this.ready) this.prepare();
     if (this.ended) resetState.call(this);
@@ -231,7 +231,7 @@ var Junjo = (function(isNode) {
     $this.inputs = arguments;
     Object.freeze($this.inputs);
 
-    _this.entries.forEach(function($fn) { jExecute.call($fn, args2arr(args)) });
+    _this.entries.forEach(function($op) { jExecute.call($op, args2arr(args)) });
     finishCheck.call(this);
     return ($this.ended && _this.result) ? this.out : this;
   };
@@ -251,37 +251,37 @@ var Junjo = (function(isNode) {
     /** reset common properties **/
     this.err    = null;      // error to pass to the "end" event
     this.out    = new E;     // final output to pass to the "end" event
-    this.shared = {};        // shared values within $fns
-    _(this).$fns.forEach(function($fn) { $this.counters[$fn.label] = _($fn).befores.length - 1 || 0 });
+    this.shared = {};        // shared values within $ops
+    _(this).$ops.forEach(function($op) { $this.counters[$op.label] = _($op).befores.length - 1 || 0 });
   };
 
-  // get $fn by label
-  var getOperation = function(lbl) { var _this = _(this); return _this.$fns[_this.labels[lbl]] };
+  // get $op by label
+  var getOperation = function(lbl) { var _this = _(this); return _this.$ops[_this.labels[lbl]] };
 
-  var setResult = function($fn, result) {
+  var setResult = function($op, result) {
     var $this = $(this);
     $this.finished++;
-    $this.results[$fn.label] = result;
+    $this.results[$op.label] = result;
     finishCheck.call(this);
   };
 
   var finishCheck = function() {
     var _this = _(this), $this = $(this);
-    if ($this.finished < _this.$fns.length || $this.ended) return;
+    if ($this.finished < _this.$ops.length || $this.ended) return;
     $this.ended = true;
     if (this.out instanceof E && !Object.keys(this.out).length) this.out = $this.results;
     this.emit('end', this.err, this.out);
   };
 
   /** "this" scope in functions **/
-  var $Scope = function($fn) { O(this, '$fn', { value : $fn, writable : false}) };
+  var $Scope = function($op) { O(this, '$op', { value : $op, writable : false}) };
   $Scope.proto = {};
 
   ['label', 'junjo', 'fn', 'id']
-  .forEach(function(p) { O($Scope.prototype, p, { get : function() { return this.$fn[p] }, set: E }) });
+  .forEach(function(p) { O($Scope.prototype, p, { get : function() { return this.$op[p] }, set: E }) });
 
   ['shared', '$', 'err', 'out', 'inputs'].forEach(function(p) {
-    O($Scope.prototype, p, { get : function() { return this.$fn.junjo[p] }, set : function(v) { this.$fn.junjo[p] = v } });
+    O($Scope.prototype, p, { get : function() { return this.$op.junjo[p] }, set : function(v) { this.$op.junjo[p] = v } });
   });
 
   ['callback', 'cb']
@@ -384,7 +384,7 @@ var Junjo = (function(isNode) {
     name || (name = $this.emitterCount.toString());
     $this.absorbs[name] = '';
     return this.absorb(emitter, evtname || 'data', function(data) {
-      var $fn = A.pop.call(arguments), result = A.pop.call(arguments);
+      var $op = A.pop.call(arguments), result = A.pop.call(arguments);
       return result + data.toString();
     }, name);
   };
@@ -393,11 +393,11 @@ var Junjo = (function(isNode) {
   Object.keys($Scope.proto)
   .forEach(function(k) { $Scope.prototype[k] = function() { return (!$(this).mask) ? $Scope.proto[k].apply(this, arguments) : null } });
 
-  /** $Fn : registered function in Junjo  **/
-  var $Fn = function(fn, label, junjo) {
+  /** Operation : registered operation in Junjo  **/
+  var Operation = function(fn, label, junjo) {
     O(this, 'fn', { value : fn, writable : false});
-    O(this, 'label', { value : label, writable : false});
-    O(this, 'junjo', { value : junjo, writable: false });
+    O(this, 'label', { value : label, writable : false });
+    O(this, 'junjo', { value : junjo, writable : false });
     O(this, 'id', { value : junjo.id + '.' + label, writable : false});
 
     // private properties
@@ -406,49 +406,49 @@ var Junjo = (function(isNode) {
     };
   };
 
-  $Fn.prototype.timeout = function(v) { if (typeof v == "number") _(this).timeout = v; return this };
-  $Fn.prototype.sync  = function(bool) { _(this).async = (bool === undefined) ? false : !bool; return this };
-  $Fn.prototype.async = function(bool) { _(this).async = (bool === undefined) ? true : !!bool; return this };
+  Operation.prototype.timeout = function(v) { if (typeof v == "number") _(this).timeout = v; return this };
+  Operation.prototype.sync  = function(bool) { _(this).async = (bool === undefined) ? false : !bool; return this };
+  Operation.prototype.async = function(bool) { _(this).async = (bool === undefined) ? true : !!bool; return this };
   ['pre', 'post', 'reduce']
-  .forEach(function(p) { $Fn.prototype[p] = function(fn) { if (typeof fn == 'function') { _(this)[p] = mask(fn) } return this } });
+  .forEach(function(p) { Operation.prototype[p] = function(fn) { if (typeof fn == 'function') { _(this)[p] = mask(fn) } return this } });
   var mask = function(fn) { return function() { $(this).mask = true; var r = fn.apply(this, arguments); $(this).mask = false; return r } }
 
-  $Fn.prototype.firstError = function(val) {
+  Operation.prototype.firstError = function(val) {
     if (val != SHIFT && val !== false) val = true;
     _(this).firstError = val;
     return this;
   };
 
-  $Fn.prototype.after = function() {
+  Operation.prototype.after = function() {
     var _this = _(this), _junjo = _(this.junjo), lbl = this.label;
     if (arguments.length == 0 && this.junjo.size > 1)
-      A.push.call(arguments, _junjo.$fns[_junjo.labels[lbl]-1].label);
+      A.push.call(arguments, _junjo.$ops[_junjo.labels[lbl]-1].label);
 
     A.forEach.call(arguments, function(l) { if (l != lbl && _this.befores.indexOf(l) < 0) _this.befores.push(l) });
     return this;
   };
 
-  $Fn.prototype.afterAbove = function(bool) {
-    return this.after.apply(this, _(this.junjo).$fns.map(function($fn) { return $fn.label }));
+  Operation.prototype.afterAbove = function(bool) {
+    return this.after.apply(this, _(this.junjo).$ops.map(function($op) { return $op.label }));
   };
 
-  $Fn.prototype.catches = function(fn) { _(this).catcher = fn; return this };
-  $Fn.prototype.fail = $Fn.prototype.catches;
-  $Fn.prototype.next = function() { return this.junjo.register.apply(this.junjo, arguments).after(this.label) };
+  Operation.prototype.catches = function(fn) { _(this).catcher = fn; return this };
+  Operation.prototype.fail = Operation.prototype.catches;
+  Operation.prototype.next = function() { return this.junjo.register.apply(this.junjo, arguments).after(this.label) };
 
-  $Fn.prototype.failSafe = function() {
+  Operation.prototype.failSafe = function() {
     var args = arguments;
     return this.catches(function() { return args });
   };
 
-  $Fn.prototype.retry = function(n, fn, nextTick) {
+  Operation.prototype.retry = function(n, fn, nextTick) {
     n  = (typeof n  == "number") ? n : 1;
     fn = (typeof fn == "function") ? fn : function(e, args) { return args };
     _(this).retry = { fn: mask(fn), count: n, nextTick: !!nextTick };
     return this;
   };
 
-  $Fn.prototype.loop = function(val, nextTick) {
+  Operation.prototype.loop = function(val, nextTick) {
     var _this = _(this);
     if (typeof val == 'number') _this.loop = function(a, r, c) { return c < val };
     else if (typeof val == 'function') _this.loop = mask(val);
@@ -456,7 +456,7 @@ var Junjo = (function(isNode) {
     return this;
   };
 
-  /** private functions of $Fn **/
+  /** private functions of Operation **/
 
   var jResetState = function(prevState) {
     variables[this.id] = {
@@ -592,7 +592,7 @@ var Junjo = (function(isNode) {
     }
     catch (e) { if (!skipFailCheck) return jFail.call(this, e) }
     setResult.call(this.junjo, this, result);
-    if (afters = _junjo.afters[this.label]) afters.forEach(function($fn) { jExecute.call($fn) }, this);
+    if (afters = _junjo.afters[this.label]) afters.forEach(function($op) { jExecute.call($op) }, this);
   };
 
   Junjo.isNode  = isNode;
