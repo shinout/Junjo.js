@@ -37,7 +37,7 @@ StaticHoster.prototype.host = function(req, res, sync) {
     var mimeInfo = self.mimes[ext];
 
     if (!mimeInfo) {
-      $j.terminate();
+      this.terminate();
       return;
     }
 

@@ -223,12 +223,12 @@ umecob.run = function(params) {
     var params = this.shared.params;
     if (params.result) {
       this.out = params.result;
-      // $j.terminate();
-      $j.skip('tpl_getter', params.tpl);
-      $j.skip('tpl', params.tpl);
-      $j.skip('data_getter', params.data);
-      $j.skip('data', params.data);
-      $j.skip('render', params.result);
+      // this.terminate();
+      this.skip('tpl_getter', params.tpl);
+      this.skip('tpl', params.tpl);
+      this.skip('data_getter', params.data);
+      this.skip('data', params.data);
+      this.skip('render', params.result);
     }
 
     ['tpl_getter', 'data_getter', 'compiler'].forEach(function(k) {
@@ -252,7 +252,7 @@ umecob.run = function(params) {
   .after('starts')
   .fail(function(e) {
     console.log(e.stack);
-    $j.terminate();
+    this.terminate();
   });
 
   $j('tpl_getter', function(params) {
@@ -272,7 +272,7 @@ umecob.run = function(params) {
   .after('inputValidator')
   .fail(function(e, args) {
     this.out = e.message;
-    $j.terminate();
+    this.terminate();
   })
   .next('compile', function() {
     var params  = this.shared.params;
@@ -294,7 +294,7 @@ umecob.run = function(params) {
   .after('inputValidator')
   .fail(function(e, args) {
     this.out = e.message;
-    $j.terminate();
+    this.terminate();
   })
   .next('data',  function() {
     var data = unifySyncAsync(arguments);

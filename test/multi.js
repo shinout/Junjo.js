@@ -22,7 +22,7 @@ function junjo_test() {
     T.equal(arguments.length, 3, "argument length in " + this.label);
   })
   .next('4th', function() {
-    $j.skip('4th2', 88,999);
+    this.skip('4th2', 88,999);
   })
   .next('4th2', function() {
     T.fail(this.label + " must not be called.");

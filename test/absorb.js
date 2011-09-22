@@ -44,7 +44,7 @@ function junjo_test() {
   })
   .fail(function(e) {
     console.log("request Error", e.message);
-    $j2.terminate();
+    this.terminate();
   })
 
   .next(function(res) {

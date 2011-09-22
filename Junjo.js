@@ -79,7 +79,7 @@ var Junjo = (function(isNode) {
       value : function(e, args) {
         console.log('ERROR in label ' + this.label, e.stack || e.message || e);
         this.err = e;
-        this.junjo.terminate();
+        this.terminate();
       },
       writable : false
     }
@@ -151,9 +151,6 @@ var Junjo = (function(isNode) {
   // get results of each process.
   Junjo.prototype.results = function(lbl) { return (lbl) ? $(this).results[lbl] : $(this).results };
 
-  // terminate whole process
-  Junjo.prototype.terminate = function() { _(this).$ops.forEach(function($op) { this.skip($op.label) }, this) };
-
   // emitting event asynchronously. The similar way as EventEmitter in Node.js
   Junjo.prototype.emit = function() {
     var evtname   = A.shift.call(arguments);
@@ -180,12 +177,6 @@ var Junjo = (function(isNode) {
     if (!Junjo.isJunjo(jn)) jn = new Junjo(jn, options);
     this.on('end', function(err, out) { jn.run(err, out) });
     return jn;
-  };
-
-  // skip the process with a given label, and make it return the passed arguments
-  Junjo.prototype.skip = function() {
-    var lbl = A.shift.call(arguments), $this = $(this);
-    if ($this.skips[lbl] === undefined) $this.skips[lbl] = arguments;
   };
 
   Junjo.prototype.prepare = function() {
@@ -277,7 +268,7 @@ var Junjo = (function(isNode) {
   var $Scope = function($op) { O(this, '$op', { value : $op, writable : false}) };
   $Scope.proto = {};
 
-  ['label', 'junjo', 'fn', 'id']
+  ['label', 'junjo', 'id']
   .forEach(function(p) { O($Scope.prototype, p, { get : function() { return this.$op[p] }, set: E }) });
 
   ['shared', '$', 'err', 'out', 'inputs'].forEach(function(p) {
@@ -392,6 +383,22 @@ var Junjo = (function(isNode) {
 
   Object.keys($Scope.proto)
   .forEach(function(k) { $Scope.prototype[k] = function() { return (!$(this).mask) ? $Scope.proto[k].apply(this, arguments) : null } });
+
+  // terminate operations
+  $Scope.prototype.terminate = function() {
+    var lbls = (!arguments.length) ? _(this.junjo).entries.map(function(v) { return v.label }) : args2arr(arguments);
+    lbls.forEach(function(lbl) {
+      this.skip(lbl);
+      var afters = _(this.junjo).afters[lbl];
+      if (afters) this.terminate.apply(this, afters.map(function(v) { return v.label }));
+    }, this);
+  };
+
+  // skip the operation with a given label, and make it return the passed arguments
+  $Scope.prototype.skip = function() {
+    var lbl = arguments.length ? A.shift.call(arguments) : this.label, $junjo = $(this.junjo);
+    if ($junjo.skips[lbl] === undefined) $junjo.skips[lbl] = arguments;
+  };
 
   /** Operation : registered operation in Junjo  **/
   var Operation = function(fn, label, junjo) {

@@ -36,8 +36,8 @@ function junjo_test() {
   $j(function() {
     var num = Number(process.argv[2]);
     if (isNaN(num)) {
-      $j.skip('select');
-      $j.skip('word', process.argv[2] || DEFAULT_STR);
+      this.skip('select');
+      this.skip('word', process.argv[2] || DEFAULT_STR);
       num = 1999;
     }
     this.shared.num = num;
@@ -66,7 +66,7 @@ function junjo_test() {
   $j.catchesAbove(function(e, args) {
     console.log(e.stack);
     console.log("from : " + this.label);
-    $j.terminate();
+    this.terminate();
   });
 
 
