@@ -47,7 +47,6 @@ var Junjo = (function(isNode) {
     if (options.after  != undefined) _($j).after  = !!options.after;
     if (options.run) nextTick(function() { $j.run.apply($j, is_arguments(options.run) ? options.run : [options.run]) });
     $j.constructor = Junjo;
-    $j.future = new Future($j);
     if (fn) $j(fn);
     return $j;
   };
@@ -84,10 +83,7 @@ var Junjo = (function(isNode) {
         this.junjo.terminate();
       },
       writable : false
-    },
-
-    callback : { get : function() { return this.future.callback }, set : E },
-    cb       : { get : function() { return this.future.callback }, set : E },
+    }
   });
 
   // Junjo extends Function prototype
@@ -157,11 +153,7 @@ var Junjo = (function(isNode) {
   };
 
   // get results of each process.
-  Junjo.prototype.results = function() {
-    return (!arguments.length) ? $(this).results : KeyPath.get($(this).results, arguments, this);
-  };
-
-  Junjo.prototype.args = function() { return this.current ? KeyPath.get($(this.current).args, arguments, this.current) : null };
+  Junjo.prototype.results = function(lbl) { return (lbl) ? $(this).results[lbl] : $(this).results };
 
   // terminate whole process
   Junjo.prototype.terminate = function() { _(this).$fns.forEach(function($fn) { this.skip($fn.label) }, this) };
@@ -413,23 +405,7 @@ var Junjo = (function(isNode) {
     // private properties
     props[this.id] = {
       befores : [], // labels of functions executed before this function
-      params  : []  // parameters to be given to the function. if empty, original callback arguments is used.
     };
-  };
-
-  $Fn.prototype.scope = function(scope) {
-    if (scope != null && typeof scope == 'object') _(this).scope = scope;
-    return this;
-  };
-
-  $Fn.prototype.bind = function() {
-    this.scope(A.shift.call(arguments));
-    return this.params.apply(this, arguments);
-  };
-
-  $Fn.prototype.params = function() {
-    A.forEach.call(arguments, function(v) { this.push(v) }, _(this).params);
-    return this;
   };
 
   $Fn.prototype.timeout = function(v) { if (typeof v == "number") _(this).timeout = v; return this };
@@ -520,7 +496,6 @@ var Junjo = (function(isNode) {
       }, []);
     }
     else $this.args = args;
-    if (_this.params.length) $this.args = _this.params.map(Junjo.present);
 
     try {
       if ($junjo.skips[label] != null) return jNext.call(this, $junjo.skips[label], true); // ignore firstError
@@ -535,7 +510,7 @@ var Junjo = (function(isNode) {
       }
 
       if (_this.pre) $this.args = _this.pre.apply($this.$scope, $this.args);
-      var ret = this.fn.apply(_this.scope || $this.$scope, $this.args); // execution
+      var ret = this.fn.apply($this.$scope, $this.args); // execution
       $this.done = true;
       if (_this.async === false || _this.async == null && !$this.cb_accessed) return jNext.call(this, ret);
       if ($this.cb_attempted) return jCallback.apply(this, $this.cb_attempted);
@@ -620,41 +595,6 @@ var Junjo = (function(isNode) {
     catch (e) { if (!skipFailCheck) return jFail.call(this, e) }
     setResult.call(this.junjo, this, result);
     if (afters = _junjo.afters[this.label]) afters.forEach(function($fn) { jExecute.call($fn) }, this);
-  };
-
-  var Future = function($j) { this.$j = $j };
-  Future.get = function(target, args) {
-    var kp = new KeyPath(target, args, this);
-    return (this.running) ? kp.get() : kp;
-  };
-
-  ['callback', 'cb', 'label'].forEach(function(p) {
-    O(Future.prototype, p, { get: function() { return Future.get.call(this.$j, 'current', [p]) }, set: E });
-  });
-
-  ['out', 'err', 'shared', '$', 'args', 'results', 'current'].forEach(function(p) {
-    O(Future.prototype, p, {
-      get: function() { var $j = this.$j;
-        return function future() { return Future.get.call($j, p, arguments) };
-      },
-      set: E
-    });
-  });
-
-  var KeyPath = function(target, args, scope) { this.target = target, this.args = args, this.scope = scope };
-  KeyPath.get = function(target, args, scope) {
-    if (typeof target == 'function') return target.apply(scope, args);
-    return A.reduce.call(args, function(o, k) {
-     if (o == null || (typeof o != 'object' && o[k] == null)) return null;
-     if (typeof o[k] == 'function' && o[k].name == 'future') return o[k]();
-     return o[k];
-    }, target);
-  };
-  KeyPath.prototype.get = function() { return KeyPath.get(this.scope[this.target], this.args, this.scope) };
-
-  /** static functions **/
-  Junjo.present = function(v) {
-    return (v instanceof KeyPath) ? v.get() : (typeof v == 'function' && v.name == 'future') ? v() : v;
   };
 
   Junjo.isNode  = isNode;

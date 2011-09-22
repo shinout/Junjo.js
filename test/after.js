@@ -13,32 +13,32 @@ function junjo_test() {
 
   $j('2nd', function() {
     T.equal(this.$.hoge, 'HogeHoge', 'shared value');
-    T.equal($j.results('1st', 1), '1st');
+    T.equal($j.results('1st')[1], '1st');
     asyncMethod(this.label, 10, this.callback);
   });
 
   $j('3rd', function() {
-    T.equal($j.results('2nd', 1), '2nd');
+    T.equal($j.results('2nd')[1], '2nd');
     asyncMethod(this.label, 20, this.callback);
   });
 
   $j('4th', function() {
-    T.equal($j.results('3rd', 1), '3rd');
+    T.equal($j.results('3rd')[1], '3rd');
     asyncMethod(this.label, 10, this.callback);
   });
 
   $j('5th', function() {
-    T.equal($j.results('4th', 1), '4th');
+    T.equal($j.results('4th')[1], '4th');
     asyncMethod(this.label, 10, this.callback);
   }).after();
 
   $j('6th', function() {
-    T.equal($j.results('5th', 1), '5th');
+    T.equal($j.results('5th')[1], '5th');
     asyncMethod(this.label, 10, this.callback);
   }).after();
 
   $j('7th', function() {
-    T.equal($j.results('6th', 1), '6th');
+    T.equal($j.results('6th')[1], '6th');
     T.equal(arguments.length, 6, "arg length in " + this.label);
     asyncMethod(this.label, 10, this.callback);
   }).after('2nd', '3rd');
