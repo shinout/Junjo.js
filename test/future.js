@@ -3,31 +3,24 @@ if (node) junjo_test();
 
 function junjo_test() {
   var $j = new Junjo();
-  $j.shared.p = 'preset';
 
-  $j('1st', function(v) {
-    console.log(v);
-    T.deepEqual(this.$.p, v, "shared value");
-  })
-  .params($j.future.shared('p'));
 
-  $j(function() {
+  $j('1st', function() {
     return Junjo.multi("a", "b", "c");
   })
   .next('2nd', function(v) {
-    T.deepEqual(v, $j.results(1));
+    T.deepEqual(v, $j.results('1st'));
     return this.label;
   })
-  .params($j.future.results(1))
+  .params($j.future.results('1st'))
   .after();
 
   $j('3rd', function(v, a, b) {
-    T.equal(v.length, 4, "arguments length");
     T.equal(a, "a");
     T.equal(b, "b");
   })
   .params($j.future.args, $j.future.args(0), $j.future.args(1))
-  .after(1, '2nd');
+  .after('1st', '2nd');
 
   $j('4th', function(lbl, n, cb) {
     T.equal(lbl, this.label);

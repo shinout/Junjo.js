@@ -36,10 +36,10 @@ var Junjo = (function(isNode) {
     props[$j.id] = {
       $fns         : [],    // registered functions
       labels       : {},    // {label => position of $fns}
+      afters       : {},    // list of labels of functions executing after the function with label of the key (label => $fn)
       listeners    : {},    // eventlisteners
       result       : false  // if true and all processes are synchronous, return result at $j.run()
     };
-    resetState.call($j);  // set variables
 
     // properties from options
     ['timeout', 'catcher', 'firstError'].forEach(function(k) { $j[k] = options[k] });
@@ -55,8 +55,9 @@ var Junjo = (function(isNode) {
   /** public properties, defined in Junjo.prototype **/
   Object.defineProperties(Junjo.prototype, {
     current  : { get : function () { return $(this).current }, set: E },
-    runnable : { get : function () { return $(this).runnable && !$(this).running }, set : E },
-    running  : { get : function () { return $(this).running }, set : E },
+    ready    : { get : function () { return !!_(this).ready }, set : E },
+    running  : { get : function () { return this.ready && $(this).running }, set : E },
+    ended    : { get : function () { return this.ready && $(this).ended }, set : E },
     size     : { get : function () { return _(this).$fns.length }, set : E },
     $        : { get : function () { return this.shared }, set : function(v) { this.shared = v } },
     inputs   : { get : function () { return $(this).inputs }, set : E },
@@ -142,6 +143,19 @@ var Junjo = (function(isNode) {
     return this;
   };
 
+  // copy this and create new Junjo
+  Junjo.prototype.clone = function() {
+    var $j = new Junjo(), _this = _(this), _that = _($j);
+    Object.keys(_this).forEach(function(k) { _that[k] = _this[k] });
+    _this.$fns.forEach(function($fn, k) {
+      _that.$fns[k] = new $Fn($fn.fn, $fn.label, $j);
+      var _$fn = _($fn), _$new = _(_that.$fns[k]);
+      Object.keys(_($fn)).forEach(function(i) { _$new[k] = _$fn[k] });
+    });
+    if (_that.ready) resetState.call($j);
+    return $j;
+  };
+
   // get results of each process.
   Junjo.prototype.results = function() {
     return (!arguments.length) ? $(this).results : KeyPath.get($(this).results, arguments, this);
@@ -150,9 +164,7 @@ var Junjo = (function(isNode) {
   Junjo.prototype.args = function() { return this.current ? KeyPath.get($(this.current).args, arguments, this.current) : null };
 
   // terminate whole process
-  Junjo.prototype.terminate = function() {
-    _(this).$fns.forEach(function($fn) { this.skip($fn.label) }, this);
-  };
+  Junjo.prototype.terminate = function() { _(this).$fns.forEach(function($fn) { this.skip($fn.label) }, this) };
 
   // emitting event asynchronously. The similar way as EventEmitter in Node.js
   Junjo.prototype.emit = function() {
@@ -166,7 +178,7 @@ var Junjo = (function(isNode) {
 
   // set eventListener
   Junjo.prototype.on = function(evtname, fn) {
-    if (evtname == 'end' && $(this).ended) {
+    if (evtname == 'end' && this.ended) {
       var self = this;
       return nextTick(function() { fn.call(self, self.err, self.out) }); // pseudo onEnd
     }
@@ -182,70 +194,64 @@ var Junjo = (function(isNode) {
     return jn;
   };
 
-  // copy this and create new Junjo
-  Junjo.prototype.clone = function() {
-    var $j = new Junjo(), _this = _(this), _that = _($j);
-    Object.keys(_this).forEach(function(k) { _that[k] = _this[k] });
-    _this.$fns.forEach(function($fn, k) {
-      _that.$fns[k] = new $Fn($fn.fn, $fn.label, $j);
-      var _$fn = _($fn), _$new = _(_that.$fns[k]);
-      Object.keys(_($fn)).forEach(function(i) { _$new[k] = _$fn[k] });
-    });
-    return $j;
-  };
-
   // skip the process with a given label, and make it return the passed arguments
   Junjo.prototype.skip = function() {
     var lbl = A.shift.call(arguments), $this = $(this);
     if ($this.skips[lbl] === undefined) $this.skips[lbl] = arguments;
   };
 
-   // run all the registered $fn
-  Junjo.prototype.run = function() {
-    if ($(this).ended) resetState.call(this);
-    var $this = $(this), _this = _(this);
-    if (!this.runnable) return this; // checking $this.runnable && !$this.running
-    $this.running = true;
-    Object.freeze(_this);
-    var args = arguments, $fns = _this.$fns;
-    $this.inputs = args;
-    Object.freeze($this.inputs);
+  Junjo.prototype.prepare = function() {
+    var  _this = _(this), $fns = _this.$fns, visited = {};
+    if (_this.ready) return this;
 
-    // topological sort
-    var visited = {};
-    $fns.forEach(function($fn) {
+    _this.entries = $fns.filter(function($fn) {
       var befores = _($fn).befores;
       befores.forEach(function(lbl) {
         var before = this.get(lbl);
         if (!before) throw new Error('label ' + lbl + ' is not registered. in label ' + $fn.label);
-        if ( !$this.afters[before.label]) $this.afters[before.label] = [];
-        $this.afters[before.label].push($fn);
+        if ( !_this.afters[before.label]) _this.afters[before.label] = [];
+        _this.afters[before.label].push($fn);
       }, this);
-      $this.counters[$fn.label] = _($fn).befores.length;
+      return befores.length == 0;
     }, this);
 
+    // topological sort to operations
     $fns.forEach(function visit($fn, ancestors) {
       if (visited[$fn.label]) return;
       if (!Array.isArray(ancestors)) ancestors = [];
       ancestors.push($fn.label);
       visited[$fn.label] = true;
-      if ($this.afters[$fn.label]) $this.afters[$fn.label].forEach(function($ch) {
+      if (_this.afters[$fn.label]) _this.afters[$fn.label].forEach(function($ch) {
         if (ancestors.indexOf($ch.label) >= 0) throw new Error('closed chain:' +  $ch.label + ' is in ' + $fn.label);
         visit($ch, args2arr(ancestors));
       });
     });
 
-    $fns.forEach(function($fn) { jExecute.call($fn, args2arr(args)) });
-    finishCheck.call(this);
+    _this.ready = true;
+    Object.freeze(_this);
+    resetState.call(this);
+    return this;
+  };
 
-    return ($(this).ended && _(this).result) ? this.out : this;
+   // run all the registered $fn
+  Junjo.prototype.run = function() {
+    if (!this.ready) this.prepare();
+    if (this.ended) resetState.call(this);
+    if (this.running) return this;
+    var $this = $(this), _this = _(this), args = arguments;
+
+    $this.inputs = arguments;
+    Object.freeze($this.inputs);
+
+    _this.entries.forEach(function($fn) { jExecute.call($fn, args2arr(args)) });
+    finishCheck.call(this);
+    return ($this.ended && _this.result) ? this.out : this;
   };
 
   /** private functions **/
 
   var resetState = function() {
-    variables[this.id] = {
-      runnable     : true,  // allowable to run or not
+    var $this = variables[this.id] = {
       running      : false, // registered processes are running or not
       results      : {},    // results of each functions
       ended        : false, // emited end event or not
@@ -254,12 +260,12 @@ var Junjo = (function(isNode) {
       skips        : {},    // skipped functions (label => bool)
       counters     : {},    // counters (label => number)
       called       : {},    // called functions (label => number)
-      afters       : {}     // list of labels of functions executing after the function with label of the key (label => $fn)
     };
     /** reset common properties **/
     this.err    = null;      // error to pass to the "end" event
-    this.out    = new E; // final output to pass to the "end" event
+    this.out    = new E;     // final output to pass to the "end" event
     this.shared = {};        // shared values within $fns
+    _(this).$fns.forEach(function($fn) { $this.counters[$fn.label] = _($fn).befores.length - 1 || 0 });
   };
 
   var setResult = function($fn, result) {
@@ -613,8 +619,7 @@ var Junjo = (function(isNode) {
     }
     catch (e) { if (!skipFailCheck) return jFail.call(this, e) }
     setResult.call(this.junjo, this, result);
-    var afters = $(this.junjo).afters[this.label];
-    if (afters) afters.forEach(function($fn) { jExecute.call($fn) }, this);
+    if (afters = _junjo.afters[this.label]) afters.forEach(function($fn) { jExecute.call($fn) }, this);
   };
 
   var Future = function($j) { this.$j = $j };
@@ -653,8 +658,7 @@ var Junjo = (function(isNode) {
   };
 
   Junjo.isNode  = isNode;
-  Junjo.multi   = function() { return arguments };
-  Junjo.args    = Junjo.multi;
+  Junjo.multi   = Junjo.args = function() { return arguments };
   Junjo.isJunjo = function($j) { return $j.constructor == Junjo };
   return Junjo;
 })(typeof exports == 'object' && exports === this);
