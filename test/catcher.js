@@ -12,10 +12,7 @@ function junjo_test() {
   .fail(function(e, args) {
     T.equal(e.message, 'msg', 'e in catcher');
     T.equal(args[0], true, 'args in catcher');
-    T.strictEqual(this.out, $j.out, 'out in catcher');
-    T.strictEqual(this.err, $j.err, 'err in catcher');
-    T.strictEqual(this.shared, $j.shared, 'shared in catcher');
-    T.strictEqual(this.$, $j.$, '$ in catcher');
+    T.strictEqual(this.$, this.shared, '$ in catcher');
     T.deepEqual(this.sub, null, "sub in catcher");
     T.deepEqual(this.callback, null, "callback in catcher");
     T.deepEqual(this.callbacks(), null, "callbacks in catcher");

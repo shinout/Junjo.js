@@ -17,7 +17,6 @@ function junjo_test() {
     T.deepEqual(this.absorb(), null, "absorb in pre");
     T.deepEqual(this.absorbData(), null, "absorbData in pre");
     T.deepEqual(this.absorbEnd(), null, "absorbEnd in pre");
-    T.strictEqual(this.out, $j.out, "out in pre");
     return Junjo.multi(__dirname + '/' + filename, data);
   })
   .post(function(title) {
@@ -28,7 +27,6 @@ function junjo_test() {
     T.deepEqual(this.absorb(), null, "absorb in post");
     T.deepEqual(this.absorbData(), null, "absorbData in post");
     T.deepEqual(this.absorbEnd(), null, "absorbEnd in post");
-    T.strictEqual(this.out, $j.out, "out in post");
     return title + " world";
   })
   .next(function(title) {

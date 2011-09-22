@@ -57,8 +57,6 @@ var Junjo = (function(isNode) {
     running  : { get : function () { return this.ready && $(this).running }, set : E },
     ended    : { get : function () { return this.ready && $(this).ended }, set : E },
     size     : { get : function () { return _(this).$ops.length }, set : E },
-    $        : { get : function () { return this.shared }, set : function(v) { this.shared = v } },
-    inputs   : { get : function () { return $(this).inputs }, set : E },
 
     timeout : {
       get : function() { return (_(this).timeout != null) ? _(this).timeout : 5 },
@@ -164,8 +162,8 @@ var Junjo = (function(isNode) {
   // set eventListener
   Junjo.prototype.on = function(evtname, fn) {
     if (evtname == 'end' && this.ended) {
-      var self = this;
-      return nextTick(function() { fn.call(self, self.err, self.out) }); // pseudo onEnd
+      var self = this, $this = $(this);
+      return nextTick(function() { fn.call(self, $this.err, $this.out) }); // pseudo onEnd
     }
     if (! (_(this).listeners[evtname] instanceof Array)) _(this).listeners[evtname] = [];
     _(this).listeners[evtname].push(fn);
@@ -224,7 +222,7 @@ var Junjo = (function(isNode) {
 
     _this.entries.forEach(function($op) { jExecute.call($op, args2arr(args)) });
     finishCheck.call(this);
-    return ($this.ended && _this.result) ? this.out : this;
+    return ($this.ended && _this.result) ? $this.out : this;
   };
 
   /** private functions **/
@@ -238,11 +236,10 @@ var Junjo = (function(isNode) {
       skips        : {},    // skipped functions (label => bool)
       counters     : {},    // counters (label => number)
       called       : {},    // called functions (label => number)
+      err          : null,  // error to pass to the "end" event
+      out          : new E, // final output to pass to the "end" event
+      shared       : {}     // shared values within $ops
     };
-    /** reset common properties **/
-    this.err    = null;      // error to pass to the "end" event
-    this.out    = new E;     // final output to pass to the "end" event
-    this.shared = {};        // shared values within $ops
     _(this).$ops.forEach(function($op) { $this.counters[$op.label] = _($op).befores.length - 1 || 0 });
   };
 
@@ -260,20 +257,21 @@ var Junjo = (function(isNode) {
     var _this = _(this), $this = $(this);
     if ($this.finished < _this.$ops.length || $this.ended) return;
     $this.ended = true;
-    if (this.out instanceof E && !Object.keys(this.out).length) this.out = $this.results;
-    this.emit('end', this.err, this.out);
+    if ($this.out instanceof E && !Object.keys($this.out).length) $this.out = $this.results;
+    this.emit('end', $this.err, $this.out);
   };
 
   /** "this" scope in functions **/
   var $Scope = function($op) { O(this, '$op', { value : $op, writable : false}) };
   $Scope.proto = {};
 
-  ['label', 'junjo', 'id']
+  ['label', 'junjo', 'fn', 'id']
   .forEach(function(p) { O($Scope.prototype, p, { get : function() { return this.$op[p] }, set: E }) });
 
-  ['shared', '$', 'err', 'out', 'inputs'].forEach(function(p) {
-    O($Scope.prototype, p, { get : function() { return this.$op.junjo[p] }, set : function(v) { this.$op.junjo[p] = v } });
+  ['shared', 'err', 'out', 'inputs'].forEach(function(p) {
+    O($Scope.prototype, p, { get : function() { return $(this.$op.junjo)[p] }, set : function(v) { $(this.$op.junjo)[p] = v } });
   });
+  O($Scope.prototype, '$', { get : function() { return $(this.$op.junjo).shared }, set : function(v) { $(this.$op.junjo).shared = v }});
 
   ['callback', 'cb']
   .forEach(function(p) { O($Scope.prototype, p, { get : function() { return this.callbacks(0) }, set : E }) });

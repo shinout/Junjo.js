@@ -25,7 +25,7 @@ function junjo_test() {
   $j('L8', report).after('L5');
 
   $j.on('end', function(err, out) {
-    T.equal(this.out.length, 5, "length of out");
+    T.equal(out.length, 5, "length of out");
   });
   $j.run();
 }
