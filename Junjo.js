@@ -104,12 +104,9 @@ var Junjo = (function(isNode) {
     return _this.after ? $fn.after() : $fn;
   };
 
-  // get $fn by label
-  Junjo.prototype.get = function(lbl) { var _this = _(this); return _this.$fns[_this.labels[lbl]] };
-
   // remove $fn by label
   Junjo.prototype.remove = function(lbl) {
-    var $fn   = this.get(lbl), _this = _(this);
+    var $fn   = getOperation.call(this, lbl), _this = _(this);
     var num   = _this.labels[lbl];
     _this.$fns.splice(num, 1);
     delete _this.labels[lbl];
@@ -127,7 +124,7 @@ var Junjo = (function(isNode) {
       if (_this.$fns.length) _(_this.$fns[_this.$fns.length-1]).catcher = fn;
     }
     else {
-      A.forEach.call(arguments, function(lbl) { if ($fn = this.get(lbl)) _($fn).catcher = fn }, this);
+      A.forEach.call(arguments, function(lbl) { if ($fn = getOperation.call(this, lbl)) _($fn).catcher = fn }, this);
     }
     return this;
   };
@@ -198,7 +195,7 @@ var Junjo = (function(isNode) {
     _this.entries = $fns.filter(function($fn) {
       var befores = _($fn).befores;
       befores.forEach(function(lbl) {
-        var before = this.get(lbl);
+        var before = getOperation.call(this, lbl);
         if (!before) throw new Error('label ' + lbl + ' is not registered. in label ' + $fn.label);
         if ( !_this.afters[before.label]) _this.afters[before.label] = [];
         _this.afters[before.label].push($fn);
@@ -257,6 +254,9 @@ var Junjo = (function(isNode) {
     this.shared = {};        // shared values within $fns
     _(this).$fns.forEach(function($fn) { $this.counters[$fn.label] = _($fn).befores.length - 1 || 0 });
   };
+
+  // get $fn by label
+  var getOperation = function(lbl) { var _this = _(this); return _this.$fns[_this.labels[lbl]] };
 
   var setResult = function($fn, result) {
     var $this = $(this);
