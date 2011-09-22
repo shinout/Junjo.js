@@ -53,7 +53,6 @@ var Junjo = (function(isNode) {
 
   /** public properties, defined in Junjo.prototype **/
   Object.defineProperties(Junjo.prototype, {
-    current  : { get : function () { return $(this).current }, set: E },
     ready    : { get : function () { return !!_(this).ready }, set : E },
     running  : { get : function () { return this.ready && $(this).running }, set : E },
     ended    : { get : function () { return this.ready && $(this).ended }, set : E },
@@ -248,7 +247,6 @@ var Junjo = (function(isNode) {
       results      : {},    // results of each functions
       ended        : false, // emited end event or not
       finished     : 0,     // the number of finished functions
-      current      : null,  // pointer to current function
       skips        : {},    // skipped functions (label => bool)
       counters     : {},    // counters (label => number)
       called       : {},    // called functions (label => number)
@@ -485,7 +483,7 @@ var Junjo = (function(isNode) {
 
     jResetState.call(this, prevState);
     var $this = $(this);
-    $junjo.current = $this.$scope, $junjo.called[label] = true;
+    $junjo.called[label] = true;
 
     if (_this.befores.length) {
       $this.args = _this.befores.reduce(function(arr, lbl) {
