@@ -210,6 +210,20 @@ var Junjo = (function(isNode) {
     return this;
   };
 
+  Junjo.prototype.shortcut = function() {
+    if (!this.ready) this.prepare();
+    if(this.running) return this;
+    var lbl = A.shift.call(arguments), $this = $(this), _this = _(this), that = this;
+    $this.skips[lbl] = arguments;
+    _(getOperation.call(this, lbl)).befores.forEach(function(l) {
+      if (!_this.afters[l]) return that.shortcut(l);
+      if (_this.afters[l].every(function($op) {
+        return ($this.skips[$op.label] !== undefined);
+      })) return that.shortcut(l);
+    });
+    return $this.skips[lbl];
+  };
+
    // run all the registered operations
   Junjo.prototype.run = function() {
     if (!this.ready) this.prepare();
@@ -233,7 +247,7 @@ var Junjo = (function(isNode) {
       results      : {},    // results of each functions
       ended        : false, // emited end event or not
       finished     : 0,     // the number of finished functions
-      skips        : {},    // skipped functions (label => bool)
+      skips        : {},    // skipped functions (label => arguments)
       counters     : {},    // counters (label => number)
       called       : {},    // called functions (label => number)
       err          : null,  // error to pass to the "end" event
