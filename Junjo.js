@@ -146,9 +146,6 @@ var Junjo = (function(isNode) {
     return $j;
   };
 
-  // get results of each process.
-  Junjo.prototype.results = function(lbl) { return (lbl) ? $(this).results[lbl] : $(this).results };
-
   // emitting event asynchronously. The similar way as EventEmitter in Node.js
   Junjo.prototype.emit = function() {
     var evtname   = A.shift.call(arguments);
@@ -395,6 +392,9 @@ var Junjo = (function(isNode) {
 
   Object.keys($Scope.proto)
   .forEach(function(k) { $Scope.prototype[k] = function() { return (!$(this).mask) ? $Scope.proto[k].apply(this, arguments) : null } });
+
+  // get results of operations.
+  $Scope.prototype.results = function(lbl) { return (lbl) ? $(this.junjo).results[lbl] : $(this.junjo).results };
 
   // terminate operations
   $Scope.prototype.terminate = function() {

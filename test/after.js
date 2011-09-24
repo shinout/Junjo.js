@@ -45,6 +45,5 @@ function junjo_test() {
 
   $j.run();
   $j.next(function(err, out) {
-    T.deepEqual(out, this.results, "out === results");
   });
 }

@@ -409,7 +409,7 @@ umecob.render = function(params) {
   echo.getResult = function() {
     if (echo.sync || !$j.size) return echo.getText();
     $j('last', function() {
-      var results = $j.results();
+      var results = this.results();
       Object.keys(results).forEach(function(label) {
         echo.put(label, unifySyncAsync(results[label]));
       });
