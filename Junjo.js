@@ -87,14 +87,15 @@ var Junjo = (function(isNode) {
   Object.getOwnPropertyNames(Function.prototype).forEach(function(k) { Junjo.prototype[k] = Function.prototype[k] });
 
   /** public functions **/
+  Junjo.preps = {}; // methods callable before ready
 
   // register a function
-  Junjo.prototype.register = function() {
+  Junjo.preps.register = function() {
     var label = (typeof arguments[0] != 'function') ? A.shift.call(arguments) : undefined;
     if (Junjo.isJunjo(arguments[0])) return this.register(label, getSubFunc(arguments[0]));
 
     var _this = _(this);
-    if (_this.labels[label]) throw new Error('label ' + label + ' is already exists.');
+    if (_this.labels[label]) throw new Error('label ' + label + ' already exists.');
     if (label == undefined) { label = _this.$ops.length; while (_this.labels[label]) { label++ } }
 
     var $op = new Operation(arguments[0], label, this);
@@ -103,7 +104,7 @@ var Junjo = (function(isNode) {
   };
 
   // remove $op by label
-  Junjo.prototype.remove = function(lbl) {
+  Junjo.preps.remove = function(lbl) {
     var $op   = getOperation.call(this, lbl), _this = _(this);
     var num   = _this.labels[lbl];
     _this.$ops.splice(num, 1);
@@ -116,7 +117,7 @@ var Junjo = (function(isNode) {
   };
 
   // add catcher
-  Junjo.prototype.catches = function() {
+  Junjo.preps.catches = function() {
     var fn = A.pop.call(arguments), _this = _(this);
     if (!arguments.length) {
       if (_this.$ops.length) _(_this.$ops[_this.$ops.length-1]).catcher = fn;
@@ -128,10 +129,50 @@ var Junjo = (function(isNode) {
   };
 
   // add catcher to all the functions registered previously, except those already have a catcher.
-  Junjo.prototype.catchesAbove = function(fn) {
+  Junjo.preps.catchesAbove = function(fn) {
     _(this).$ops.forEach(function($op) { if (!_($op).catcher) _($op).catcher = fn });
     return this;
   };
+
+  // prepare for execution
+  Junjo.preps.prepare = function() {
+    var  _this = _(this), $ops = _this.$ops, visited = {};
+
+    _this.entries = $ops.filter(function($op) {
+      var befores = _($op).befores;
+      befores.forEach(function(lbl) {
+        var before = getOperation.call(this, lbl);
+        if (!before) throw new Error('label ' + lbl + ' is not registered. in label ' + $op.label);
+        if ( !_this.afters[before.label]) _this.afters[before.label] = [];
+        _this.afters[before.label].push($op);
+      }, this);
+      return befores.length == 0;
+    }, this);
+
+    // topological sort to operations
+    $ops.forEach(function visit($op, ancestors) {
+      if (visited[$op.label]) return;
+      if (!Array.isArray(ancestors)) ancestors = [];
+      ancestors.push($op.label);
+      visited[$op.label] = true;
+      if (_this.afters[$op.label]) _this.afters[$op.label].forEach(function($ch) {
+        if (ancestors.indexOf($ch.label) >= 0) throw new Error('closed chain:' +  $ch.label + ' is in ' + $op.label);
+        visit($ch, args2arr(ancestors));
+      });
+    });
+
+    _this.ready = true;
+    // Object.freeze(_this);
+    resetState.call(this);
+    return this;
+  };
+  Object.keys(Junjo.preps)
+  .forEach(function(p) {
+    Junjo.prototype[p] = function() {
+      if (this.ready) throw new Error('method "' + p + '" cannot be called after prepare(), shortcut(), run() is called.');
+      return Junjo.preps[p].apply(this, arguments);
+    }
+  });
 
   // copy this and create new Junjo
   Junjo.prototype.clone = function() {
@@ -172,39 +213,6 @@ var Junjo = (function(isNode) {
     if (!Junjo.isJunjo(jn)) jn = new Junjo(jn, options);
     this.on('end', function(err, out) { jn.run(err, out) });
     return jn;
-  };
-
-  Junjo.prototype.prepare = function() {
-    var  _this = _(this), $ops = _this.$ops, visited = {};
-    if (_this.ready) return this;
-
-    _this.entries = $ops.filter(function($op) {
-      var befores = _($op).befores;
-      befores.forEach(function(lbl) {
-        var before = getOperation.call(this, lbl);
-        if (!before) throw new Error('label ' + lbl + ' is not registered. in label ' + $op.label);
-        if ( !_this.afters[before.label]) _this.afters[before.label] = [];
-        _this.afters[before.label].push($op);
-      }, this);
-      return befores.length == 0;
-    }, this);
-
-    // topological sort to operations
-    $ops.forEach(function visit($op, ancestors) {
-      if (visited[$op.label]) return;
-      if (!Array.isArray(ancestors)) ancestors = [];
-      ancestors.push($op.label);
-      visited[$op.label] = true;
-      if (_this.afters[$op.label]) _this.afters[$op.label].forEach(function($ch) {
-        if (ancestors.indexOf($ch.label) >= 0) throw new Error('closed chain:' +  $ch.label + ' is in ' + $op.label);
-        visit($ch, args2arr(ancestors));
-      });
-    });
-
-    _this.ready = true;
-    Object.freeze(_this);
-    resetState.call(this);
-    return this;
   };
 
   Junjo.prototype.shortcut = function() {

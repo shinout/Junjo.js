@@ -43,6 +43,14 @@ function junjo_test() {
 
   $j.shortcut('E', 'shortcut');
 
+  try {
+    $j('I', function() {});
+    T.fail(e.message);
+  }
+  catch (e) {
+    T.ok(true, e.message);
+  }
+
   $j.on('end', function(err, out) {
     T.equal(out.E[0], 'shortcut');
   });
