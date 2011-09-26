@@ -52,6 +52,14 @@ var Junjo = (function(isNode) {
   };
 
   /** public properties, defined in Junjo.prototype **/
+  ['out', 'err', 'shared'].forEach(function(p) {
+    O(Junjo.prototype, p, {
+      get: function() { return (this.ready) ? $(this)[p] : null}, 
+      set: function(v) { if (this.ready) $(this)[p] = v }
+    });
+  });
+  O(Junjo.prototype, '$', { get: function() { return this.shared }, set: function(v) { this.shared = v }});
+
   Object.defineProperties(Junjo.prototype, {
     ready    : { get : function () { return !!_(this).ready }, set : E },
     running  : { get : function () { return this.ready && $(this).running }, set : E },

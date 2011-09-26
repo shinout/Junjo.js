@@ -7,11 +7,13 @@ function junjo_test() {
   var $j = new Junjo();
 
   $j.start(function(a,b,c) {
-    $j.enter('AC',a,c);
-    $j.enter('CB',c,b);
+    this.shared.A = "A";
+    this.enter('AC',a,c);
+    this.enter('CB',c,b);
   });
 
   $j('AC', function() {
+    T.equal(this.$.A, 'A');
     T.equal(arguments.length, 2);
     T.equal(arguments[0], 'A');
     T.equal(arguments[1], 'C');
