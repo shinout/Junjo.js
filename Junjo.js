@@ -331,10 +331,10 @@ var Junjo = (function(isNode) {
     }
   });
 
-  $Scope.proto.callbacks = function(key) {
+  $Scope.proto.callbacks = function(key, isSub) {
     var $this = $(this);
     $this.cb_accessed = true;
-    key = getCallbackName(key, $this);
+    key = getCallbackName(key, $this, isSub);
     if ($this.cb_keys[key] === undefined) {
       $this.cb_count++;
       $this.cb_keys[key] = 1;
@@ -342,7 +342,8 @@ var Junjo = (function(isNode) {
     return jCallback.bind(this, key, $this.trial);
   };
 
-  var getCallbackName = function(key, $this) {
+  var getCallbackName = function(key, $this, isSub) {
+    if (key == 'sub' && !isSub) throw new Error("callback key must not be 'sub'.");
     if (key != null) return key;
     key = $this.cb_count;
     while ($this.cb_keys[key] !== undefined) { key++ }
@@ -367,10 +368,9 @@ var Junjo = (function(isNode) {
 
   $Scope.proto.absorbEnd = function(emitter, name, isSub) {
     var self = this, $this = $(this);
-    if (name == 'sub' && !isSub) throw new Error("name must not be 'sub'.");
-    name = getCallbackName(name, $this);
+    name = getCallbackName(name, $this, isSub);
     emitter.on('error', jFail.bind(this));
-    var cb = this.callbacks(name);
+    var cb = this.callbacks(name, isSub);
     emitter.on('end', function(err, out) {
       if (Junjo.isJunjo(emitter)) $this.absorbErrs[name] = err, $this.absorbs[name] = out;
       cb($this.absorbErrs[name], $this.absorbs[name]);
