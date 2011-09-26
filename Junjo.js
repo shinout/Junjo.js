@@ -103,9 +103,12 @@ var Junjo = (function(isNode) {
     return _this.after ? $op.after() : $op;
   };
 
+  // get $op by label. this is just getting, so this can be called after prepare().
+  Junjo.prototype.get = function(lbl) { var _this = _(this); return _this.$ops[_this.labels[lbl]] };
+
   // remove $op by label
   Junjo.preps.remove = function(lbl) {
-    var $op   = getOperation.call(this, lbl), _this = _(this);
+    var $op   = this.get(lbl), _this = _(this);
     var num   = _this.labels[lbl];
     _this.$ops.splice(num, 1);
     delete _this.labels[lbl];
@@ -123,7 +126,7 @@ var Junjo = (function(isNode) {
       if (_this.$ops.length) _(_this.$ops[_this.$ops.length-1]).catcher = fn;
     }
     else {
-      A.forEach.call(arguments, function(lbl) { if ($op = getOperation.call(this, lbl)) _($op).catcher = fn }, this);
+      A.forEach.call(arguments, function(lbl) { if ($op = this.get(lbl)) _($op).catcher = fn }, this);
     }
     return this;
   };
@@ -141,7 +144,7 @@ var Junjo = (function(isNode) {
     _this.entries = $ops.filter(function($op) {
       var befores = _($op).befores;
       befores.forEach(function(lbl) {
-        var before = getOperation.call(this, lbl);
+        var before = this.get(lbl);
         if (!before) throw new Error('label ' + lbl + ' is not registered. in label ' + $op.label);
         if ( !_this.afters[before.label]) _this.afters[before.label] = [];
         _this.afters[before.label].push($op);
@@ -220,7 +223,7 @@ var Junjo = (function(isNode) {
     if(this.running) return this;
     var lbl = A.shift.call(arguments), $this = $(this), _this = _(this), that = this;
     $this.skips[lbl] = arguments;
-    _(getOperation.call(this, lbl)).befores.forEach(function(l) {
+    _(this.get(lbl)).befores.forEach(function(l) {
       if (!_this.afters[l]) return that.shortcut(l);
       if (_this.afters[l].every(function($op) {
         return ($this.skips[$op.label] !== undefined);
@@ -261,9 +264,6 @@ var Junjo = (function(isNode) {
     };
     _(this).$ops.forEach(function($op) { $this.counters[$op.label] = _($op).befores.length - 1 || 0 });
   };
-
-  // get $op by label
-  var getOperation = function(lbl) { var _this = _(this); return _this.$ops[_this.labels[lbl]] };
 
   var setResult = function($op, result) {
     var $this = $(this);
