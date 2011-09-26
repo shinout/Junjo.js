@@ -10,13 +10,12 @@ function junjo_test() {
     asyncMethod("B", 30, this.callbacks());
   })
   .reduce(function(result, args, key) {
-    if (!result) result = Junjo.multi();
     var err = Array.prototype.shift.call(args);
     result[0] = result[0] || err;
     result[key + 1] = args[0];
     result.length = Object.keys(result).length;
     return result;
-  })
+  }, Junjo.multi())
   .post(function() {
     T.equal(arguments.length, 3);
     T.equal(arguments[0], null);

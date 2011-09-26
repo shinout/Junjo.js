@@ -447,9 +447,12 @@ var Junjo = (function(isNode) {
   Operation.prototype.timeout = function(v) { if (typeof v == "number") _(this).timeout = v; return this };
   Operation.prototype.sync  = function(bool) { _(this).async = (bool === undefined) ? false : !bool; return this };
   Operation.prototype.async = function(bool) { _(this).async = (bool === undefined) ? true : !!bool; return this };
-  ['pre', 'post', 'reduce']
+  ['pre', 'post']
   .forEach(function(p) { Operation.prototype[p] = function(fn) { if (typeof fn == 'function') { _(this)[p] = mask(fn) } return this } });
-  var mask = function(fn) { return function() { $(this).mask = true; var r = fn.apply(this, arguments); $(this).mask = false; return r } }
+
+  Operation.prototype.reduce = function(fn, prime) {
+    if (typeof fn == 'function') { _(this).reduce = {fn: mask(fn), prime: prime} } return this;
+  };
 
   Operation.prototype.firstError = function(val) {
     if (val != SHIFT && val !== false) val = true;
@@ -516,6 +519,8 @@ var Junjo = (function(isNode) {
     Object.keys(prevState).forEach(function(k) { variables[this.id][k] = prevState[k] }, this);
   }
 
+  var mask = function(fn) { return function() { $(this).mask = true; var r = fn.apply(this, arguments); $(this).mask = false; return r } }
+
   var jExecute = function(args, prevState, force) {
     var _this  = _(this), label = this.label, $junjo = $(this.junjo);
     if ($junjo.counters[label]-- > 0 || ($junjo.called[label] && !force)) return;
@@ -571,14 +576,14 @@ var Junjo = (function(isNode) {
   var jInheritValue = function(k) { var v = _(this)[k]; return (v == null) ? this.junjo[k] : v };
 
   var jCallback = function() {
-    var $this = $(this);
+    var $this = $(this), reduce = _(this).reduce;
     if ($this.finished) return;
     if (!$this.done) return $this.cb_attempted = arguments;
     var key = A.shift.call(arguments);
     var trial = A.shift.call(arguments);
     if (trial < $this.trial) return;
-    if (_(this).reduce) {
-      var v = _(this).reduce.call($this.$scope, $this.result, arguments, key)
+    if (reduce) {
+      var v = _(this).reduce.fn.call($this.$scope, $this.result || reduce.prime, arguments, key)
       $this.result =  (v !== undefined) ? v : $this.result;
     }
     else $this.result = arguments;

@@ -15,14 +15,13 @@ function junjo_test() {
     this.absorbData(grep.stderr, 'data', '1sterr');
   })
   .reduce(function(result, args, key) {
-    if (!result) result = Junjo.multi();
     var err = Array.prototype.shift.call(args);
     result[0] = result[0] || err;
     result[1] || (result[1] = {});
     result[1][key] = args[0];
     result.length = 2;
     return result;
-  })
+  }, Junjo.multi())
   .firstError();
 
   $j('2nd',function() {
@@ -67,14 +66,13 @@ function junjo_test() {
     this.absorbData(res,'error', 'resError');
   })
   .reduce(function(result, args, key) {
-    if (!result) result = Junjo.multi();
     var err = Array.prototype.shift.call(args);
     result[0] = result[0] || err;
     result[1] || (result[1] = {});
     result[1][key] = args[0];
     result.length = 2;
     return result;
-  })
+  }, Junjo.multi())
 
   .next(function(err, out) {
     console.log(err, out);

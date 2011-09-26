@@ -32,6 +32,6 @@ $j('exec', function(files) {
   console.log('------------------------------------[' + filename + ']------------------------------------'); 
   if (args[0]) console.error(args[0]); 
   console.log(args[1]); 
-});
+}, {});
 
 $j.run();
