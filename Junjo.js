@@ -339,7 +339,7 @@ var Junjo = (function(isNode) {
       $this.cb_count++;
       $this.cb_keys[key] = 1;
     }
-    return jCallback.bind(this, key);
+    return jCallback.bind(this, key, $this.trial);
   };
 
   var getCallbackName = function(key, $this) {
@@ -513,6 +513,7 @@ var Junjo = (function(isNode) {
       done         : false, // execution ended or not
       finished     : false, // whether jNext is normally finished called or not.
       cb_accessed  : false, // whether callback is accessed or not
+      trial        : 0,
       cb_count     : 0,
       cb_keys      : {},    // key => 1
       result       : null,
@@ -557,7 +558,7 @@ var Junjo = (function(isNode) {
       var ret = this.fn.apply($this.$scope, $this.args); // execution
       $this.done = true;
       if (_this.async === false || _this.async == null && !$this.cb_accessed) return jNext.call(this, ret);
-      if ($this.cb_attempted) return jCallback.apply(this, $this.cb_attempted);
+      if ($this.cb_attempted) return jCallback.apply(this, $this.cb_attempted, $this.trial);
       if (!jInheritValue.call(this, 'timeout')) return;
 
       var self = this;
@@ -601,6 +602,8 @@ var Junjo = (function(isNode) {
     if ($this.finished) return;
     if (!$this.done) return $this.cb_attempted = arguments;
     var key = A.shift.call(arguments);
+    var trial = A.shift.call(arguments);
+    if (trial < $this.trial) return;
     if (_(this).reduce) {
       var v = _(this).reduce.call($this.$scope, $this.result, arguments, key)
       $this.result =  (v !== undefined) ? v : $this.result;
