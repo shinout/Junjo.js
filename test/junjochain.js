@@ -6,7 +6,7 @@ function junjo_test() {
   var hoge = 1;
 
   new Junjo(function() {
-    setTimeout(this.callback, 1000);
+    setTimeout(this.callback, 100);
     hoge++;
     T.equal(hoge, 2);
   }, {run: true})

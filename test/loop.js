@@ -10,7 +10,7 @@ function junjo_test() {
   $j('1st', function() {
     counter1++;
     console.green(arguments);
-    asyncMethod(this.label, 200, this.callback);
+    asyncMethod(this.label, 20, this.callback);
   })
   .loop(5)
   .next(function() {
@@ -20,7 +20,7 @@ function junjo_test() {
   .next('2nd', function(n, result,count) {
     counter2++;
     console.cyan(arguments);
-    asyncMethod(this.label, 200, this.callback);
+    asyncMethod(this.label, 10, this.callback);
   })
   .loop(function(result, args, count) {
     T.deepEqual(this.sub, null, "sub in loop");
