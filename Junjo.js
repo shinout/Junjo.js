@@ -140,6 +140,12 @@ var Junjo = (function(isNode) {
     return this;
   };
 
+  // inherit settings of given Junjo instance
+  Junjo.preps.inherit = function($j) {
+    ['timeout', 'enterTimeout', 'catcher', 'firstError'].forEach(function(k) { this[k] = $j[k] }, this);
+    return this;
+  };
+
   // register a function executed on run()
   Junjo.preps.start = function(fn) { if (typeof fn == 'function') _(this).start = fn };
 
@@ -318,7 +324,7 @@ var Junjo = (function(isNode) {
     get : function() {
       var $this = $(this);
       if ($this.mask) return null;
-      if (!$this.sub) { this.sub = new Junjo() }
+      if (!$this.sub) { this.sub = new Junjo().inherit(this.junjo) }
       return $this.sub;
     },
     set : function($j) {

@@ -3,11 +3,13 @@ if (node) junjo_test();
 
 // test start
 function junjo_test() {
-  var $j = new Junjo();
+  var $j = new Junjo({timeout: 1});
 
   $j('1st', function() {
     syncMethod(this.label);
     this.sub('2nd', function() {
+      T.equal(this.junjo.timeout, 1, "timeout");
+      console.log(this.junjo.timeout)
       asyncMethod(this.label, 20, this.cb);
       this.out[this.label] = "hoge";
     });
