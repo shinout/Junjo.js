@@ -196,9 +196,9 @@ var Junjo = (function(isNode) {
     _this.$ops.forEach(function($op, k) {
       _that.$ops[k] = new Operation($op.fn, $op.label, $j);
       var _$op = _($op), _$new = _(_that.$ops[k]);
-      Object.keys(_($op)).forEach(function(i) { _$new[k] = _$op[k] });
+      Object.keys(_($op)).forEach(function(i) { _$new[i] = _$op[i] });
     });
-    if (_that.ready) resetState.call($j);
+    _that.ready = false, _that.entries = [], _that.afters = {};
     return $j;
   };
 

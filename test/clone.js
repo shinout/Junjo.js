@@ -45,6 +45,13 @@ function junjo_test() {
 
   $j.run("green");
   setTimeout(function() {
-    $j.clone().run("purple");
+    $j2 = $j.clone();
+    $j2.remove('7th');
+    $j2('7th-2', function() {
+      asy(this.$.col, this.label, 3, this.callback);
+    });
+
+    $j2.run("purple");
+
   }, 100);
 }
