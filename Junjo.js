@@ -487,10 +487,11 @@ var Junjo = (function(isNode) {
     return this.catches(function() { return args });
   };
 
-  Operation.prototype.retry = function(n, fn, nextTick) {
-    n  = (typeof n  == "number") ? n : 1;
-    fn = (typeof fn == "function") ? fn : function(e, args) { return args };
-    _(this).retry = { fn: mask(fn), count: n, nextTick: !!nextTick };
+  Operation.prototype.retry = function(val, nextTick) {
+    var _this = _(this);
+    if (typeof val == 'number') _this.retry = function(e, args, c) { return c < val };
+    else if (typeof val == 'function') _this.retry = mask(val);
+    _this.retry.nextTick = !!nextTick;
     return this;
   };
 
@@ -580,15 +581,10 @@ var Junjo = (function(isNode) {
     if ($(this).finished) return;
     var $this = $(this), self = this;
     var _retry = _(this).retry;
-    if (_retry) {
-      if (!$this.trial) $this.trial = 0;
-      if ($this.trial++ != _retry.count) {
-        var args = _retry.fn.call($this.$scope, e, $this.args, $this.trial);
-        if (!is_arguments(args)) args = [args];
-        return (_retry.nextTick)
-          ? nextTick(function() {jExecute.call(self, args, {trial: $this.trial}, true)})
-          : jExecute.call(this, args, {trial: $this.trial}, true);
-      }
+    if (_retry && _retry.call($this.$scope, e, $this.args, ++$this.trial)){
+      return (_retry.nextTick)
+        ? nextTick(function() {jExecute.call(self, null, {trial: $this.trial}, true)})
+        : jExecute.call(this, null, {trial: $this.trial}, true);
     }
 
     var result = mask(jInheritValue.call(this, 'catcher')).call($this.$scope, e, $this.args);
