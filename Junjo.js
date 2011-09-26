@@ -351,64 +351,36 @@ var Junjo = (function(isNode) {
 
   $Scope.proto.absorb = function(emitter, evtname, fn, name) {
     var self = this, $this = $(this);
-    name || (name = $this.emitterCount.toString());
+    name = getCallbackName(name, $this);
     emitter.on(evtname, function() {
       try {
         A.push.call(arguments, $this.absorbs[name], self);
         var ret = fn.apply(emitter, arguments);
-        if (ret) $this.absorbs[name] = ret;
+        if (ret !== undefined) $this.absorbs[name] = ret;
       }
       catch (e) {
-        $this.absorbErr = e;
+        $this.absorbErrs[name] = e;
       }
     });
-    return this.absorbEnd(emitter, name);
-  };
-
-  $Scope.proto.absorbError = function(emitter, evtname) {
-    var self = this, $this = $(this);
-    var err = '';
-    var fn = (typeof arguments[2] == 'function') ? A.splice.call(arguments, 2, 1): function(e) {
-      if (toStr) err += e.toString();
-      else err = e;
-    }
-    var name =  arguments[2] || ($this.emitterCount.toString());
-    var toStr = (evtname == 'data' && arguments[3] === undefined) ? true : !! arguments[3];
-
-    emitter.on(evtname || 'error', function() {
-      try {
-        A.push.call(arguments, err, self);
-        fn.apply(emitter, arguments);
-      }
-      catch (e) {
-        err = e;
-      }
-    });
-    emitter.on('end', function() {if (err) $this.absorbErr = (typeof err == 'string') ? new Error(err) : err });
     return this.absorbEnd(emitter, name);
   };
 
   $Scope.proto.absorbEnd = function(emitter, name, isSub) {
+    var self = this, $this = $(this);
     if (name == 'sub' && !isSub) throw new Error("name must not be 'sub'.");
-    var $this = $(this);
-    name || (name = $this.emitterCount.toString());
-    $this.emitterCount++;
-    var cb = this.callback;
-    emitter.on('end', function() {
-      if (Junjo.isJunjo(emitter)) {
-        $this.absorbs[name] = arguments[1];
-        if (arguments[0]) $this.absorbErr = arguments[0];
-      }
-      if (--$this.emitterCount > 0) return;
-      var out = (Object.keys($this.absorbs).length == 1) ? $this.absorbs[Object.keys($this.absorbs)[0]] : $this.absorbs;
-      nextTick(function() { cb($this.absorbErr, out) });
+    name = getCallbackName(name, $this);
+    emitter.on('error', jFail.bind(this));
+    var cb = this.callbacks(name);
+    emitter.on('end', function(err, out) {
+      if (Junjo.isJunjo(emitter)) $this.absorbErrs[name] = err, $this.absorbs[name] = out;
+      cb($this.absorbErrs[name], $this.absorbs[name]);
     });
     return this;
   };
 
   $Scope.proto.absorbData = function(emitter, evtname, name) {
     var $this = $(this);
-    name || (name = $this.emitterCount.toString());
+    name = getCallbackName(name, $this);
     $this.absorbs[name] = '';
     return this.absorb(emitter, evtname || 'data', function(data) {
       var $op = A.pop.call(arguments), result = A.pop.call(arguments);
@@ -416,6 +388,20 @@ var Junjo = (function(isNode) {
     }, name);
   };
   $Scope.proto.gather = $Scope.proto.absorbData;
+
+  var jFail = $Scope.proto.fail = function(e) {
+    if ($(this).finished) return;
+    var $this = $(this), self = this;
+    var _retry = _(this).retry;
+    if (_retry && _retry.call($this.$scope, e, $this.args, ++$this.trial)){
+      return (_retry.nextTick)
+        ? nextTick(function() {jExecute.call(self, null, {trial: $this.trial}, true)})
+        : jExecute.call(this, null, {trial: $this.trial}, true);
+    }
+
+    var result = mask(jInheritValue.call(this, 'catcher')).call($this.$scope, e, $this.args);
+    return jNext.call(this, result, true); // pass the second arg to avoid infinite loop
+  };
 
   Object.keys($Scope.proto)
   .forEach(function(k) { $Scope.prototype[k] = function() { return (!$(this).mask) ? $Scope.proto[k].apply(this, arguments) : null } });
@@ -508,9 +494,8 @@ var Junjo = (function(isNode) {
   var jResetState = function(prevState) {
     variables[this.id] = {
       args         : [],    // arguments passed to this.execute()
-      emitterCount : 0,     // event emitters (name => emitter)
       absorbs      : {},    // absorbed data from emitters (name => absorbed data)
-      absorbErr    : null,  // absorbed error from emitters
+      absorbErrs   : {},    // absorbed error from emitters (name => absorbed error)
       done         : false, // execution ended or not
       finished     : false, // whether jNext is normally finished called or not.
       cb_accessed  : false, // whether callback is accessed or not
@@ -575,20 +560,6 @@ var Junjo = (function(isNode) {
       $this.done = true;
       return jFail.call(this, e);
     }
-  };
-
-  var jFail = function(e, called) {
-    if ($(this).finished) return;
-    var $this = $(this), self = this;
-    var _retry = _(this).retry;
-    if (_retry && _retry.call($this.$scope, e, $this.args, ++$this.trial)){
-      return (_retry.nextTick)
-        ? nextTick(function() {jExecute.call(self, null, {trial: $this.trial}, true)})
-        : jExecute.call(this, null, {trial: $this.trial}, true);
-    }
-
-    var result = mask(jInheritValue.call(this, 'catcher')).call($this.$scope, e, $this.args);
-    return jNext.call(this, result, true); // pass the second arg to avoid infinite loop
   };
 
   var jInheritValue = function(k) { var v = _(this)[k]; return (v == null) ? this.junjo[k] : v };
