@@ -63,7 +63,6 @@ var Junjo = (function(isNode) {
       set : function(v) { if (typeof v == 'number') _(this).enterTimeout = v }
     },
 
-
     timeout : {
       get : function() { return (_(this).timeout != null) ? _(this).timeout : 5 },
       set : function(v) { if (typeof v == 'number') _(this).timeout = v }
@@ -110,30 +109,28 @@ var Junjo = (function(isNode) {
   };
 
   // get $op by label. this is just getting, so this can be called after prepare().
-  Junjo.prototype.get = function(lbl) { var _this = _(this); return _this.$ops[_this.labels[lbl]] };
+  Junjo.prototype.get = function(lbl) {
+    var _this = _(this), ret = _this.$ops[_this.labels[lbl]]
+    if (!ret) throw new Error(lbl + ' : no such label.');
+    return ret;
+  };
 
   // remove $op by label
   Junjo.preps.remove = function(lbl) {
-    var $op   = this.get(lbl), _this = _(this);
-    var num   = _this.labels[lbl];
+    var $op = this.get(lbl), _this = _(this), num = _this.labels[lbl];
     _this.$ops.splice(num, 1);
-    delete _this.labels[lbl];
-    D($op);
-    for (var i=num, l=_this.$ops.length; i<l; i++) {
-      _this.labels[_this.$ops[i].label] = i;
-    }
+    delete _this.labels[lbl], D($op);
+    for (var i=num, l=_this.$ops.length; i<l; i++) { _this.labels[_this.$ops[i].label] = i }
     return this;
   };
 
   // add catcher
   Junjo.preps.catches = function() {
     var fn = A.pop.call(arguments), _this = _(this);
-    if (!arguments.length) {
+    if (!arguments.length)
       if (_this.$ops.length) _(_this.$ops[_this.$ops.length-1]).catcher = fn;
-    }
-    else {
+    else
       A.forEach.call(arguments, function(lbl) { if ($op = this.get(lbl)) _($op).catcher = fn }, this);
-    }
     return this;
   };
 
