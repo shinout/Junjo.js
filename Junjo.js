@@ -268,7 +268,7 @@ var Junjo = (function(isNode) {
    // run all the registered operations
   Junjo.prototype.run = function() {
     if (!this.ready) this.prepare();
-    if (this.ended) resetState.call(this);
+    if (this.ended) return this;
     var $this = $(this), _this = _(this), args = arguments;
     $this.running = true;
 
@@ -279,6 +279,8 @@ var Junjo = (function(isNode) {
     finishCheck.call(this);
     return ($this.ended && _this.result) ? $this.out : this;
   };
+
+  Junjo.prototype.reset = function() { if (this.ended) resetState.call(this); return this };
 
   /** private functions **/
 
