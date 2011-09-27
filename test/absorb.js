@@ -11,8 +11,8 @@ function junjo_test() {
   $j('1st', function() {
     T.equal(arguments.length, 0, "no args");
     var grep = spawn('grep', ['consolelog', "unkO"]);
-    this.absorbData(grep.stdout, 'data', '1stdata');
-    this.absorbData(grep.stderr, 'data', '1sterr');
+    this.absorbData(grep.stdout, '1stdata');
+    this.absorbData(grep.stderr, '1sterr');
   })
   .reduce(function(result, args, key) {
     var err = Array.prototype.shift.call(args);
@@ -28,8 +28,8 @@ function junjo_test() {
     console.log(arguments);
     T.strictEqual(arguments.length, 2, "argument length");
     var grep = spawn('grep', ['consolelog', __filename]);
-    this.absorbData(grep.stdout, 'data', '1stdata');
-    this.absorbData(grep.stderr, 'data', '1sterr');
+    this.absorbData(grep.stdout, '1stdata');
+    this.absorbData(grep.stderr, '1sterr');
   }).after('1st');
 
   $j(function(err, out) {
@@ -60,10 +60,9 @@ function junjo_test() {
   .next(function(res) {
     this.sub(function() { this.out = 'Yeah!' });
     var grep = spawn('grep', ['consolelog', __filename]);
-    this.absorbData(grep.stdout, 'data', '1stdata');
-    this.absorbData(grep.stderr, 'data', '1sterr');
-    this.absorbData(res,'data', 'response');
-    this.absorbData(res,'error', 'resError');
+    this.absorbData(grep.stdout, '1stdata');
+    this.absorbData(grep.stderr, '1sterr');
+    this.absorbData(res, 'response');
   })
   .reduce(function(result, args, key) {
     var err = Array.prototype.shift.call(args);

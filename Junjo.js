@@ -390,7 +390,7 @@ var Junjo = (function(isNode) {
     return this;
   };
 
-  $Scope.proto.absorbData = function(emitter, evtname, name) {
+  $Scope.proto.absorbData = function(emitter, name, evtname) {
     var $this = $(this);
     name = getCallbackName(name, $this);
     $this.absorbs[name] = '';
