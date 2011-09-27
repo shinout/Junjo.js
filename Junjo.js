@@ -222,10 +222,6 @@ var Junjo = (function(isNode) {
 
   // set eventListener
   Junjo.prototype.on = function(evtname, fn) {
-    if (evtname == 'end' && this.ended) {
-      var self = this, $this = $(this);
-      return nextTick(function() { fn.call(self, $this.err, $this.out) }); // pseudo onEnd
-    }
     if (! (_(this).listeners[evtname] instanceof Array)) _(this).listeners[evtname] = [];
     _(this).listeners[evtname].push(fn);
     return this;
