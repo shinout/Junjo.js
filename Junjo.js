@@ -24,7 +24,9 @@ var Junjo = (function(isNode) {
     var options = (typeof arguments[0] == 'object') ? arguments[0] : {};
 
     // this function $j is returned in Junjo().
-    var $j = function() { return $j.register.apply($j, arguments) };
+    var $j = function() {
+      return $j[(typeof arguments[arguments.length -1] == 'function')? 'register' : 'inputs'].apply($j, arguments);
+    };
 
     // $j extends Junjo.prototype
     if ($j.__proto__) $j.__proto__ = Junjo.prototype;
@@ -114,6 +116,23 @@ var Junjo = (function(isNode) {
     var $op = new Operation(arguments[0], label, this);
     _this.labels[label] = _this.$ops.push($op) -1;
     return _this.after ? $op.after() : $op;
+  };
+
+  // set names to arguments of $j.run()
+  Junjo.preps.inputs = function() {
+    if (arguments.length == 1 && typeof arguments[0] == 'object') {
+      var obj = arguments[0];
+      Object.keys(obj).forEach(function(k) {
+        var v = Array.isArray(obj[k]) ? obj[k] : [obj[k]];
+        v.unshift(k);
+        this.inputs.apply(this, v);
+      }, this);
+      return this;
+    }
+    var label = A.shift.call(arguments), args = A.filter.call(arguments, function(v) {return !isNaN(Number(v)) });
+    return this.register(label, function() {
+      return Junjo.multi.apply(null, args.map(function(n) { return this.inputs[n] }, this));
+    });
   };
 
   // get $op by label. this is just getting, so this can be called after prepare().
@@ -519,7 +538,7 @@ var Junjo = (function(isNode) {
       cb_keys      : {},    // key => 1
       result       : null,
       mask         : false,
-      $scope       : new $Scope(this) // "this" in the functioin
+      $scope       : new $Scope(this) // "this" in the function
     };
     if (!prevState) return;
     Object.keys(prevState).forEach(function(k) { variables[this.id][k] = prevState[k] }, this);

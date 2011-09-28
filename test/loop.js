@@ -23,6 +23,7 @@ function junjo_test() {
     asyncMethod(this.label, 10, this.callback);
   })
   .loop(function(result, args, count) {
+    console.log(result);
     T.deepEqual(this.sub, null, "sub in loop");
     T.deepEqual(this.callback, null, "callback in loop");
     T.deepEqual(this.callbacks(), null, "callbacks in loop");
@@ -30,7 +31,7 @@ function junjo_test() {
     T.deepEqual(this.absorbData(), null, "absorbData in loop");
     T.deepEqual(this.absorbEnd(), null, "absorbEnd in loop");
     return count < 10;
-  });
+  }, 33);
 
   $j.on('end', function() {
     T.equal(counter1, 5);
