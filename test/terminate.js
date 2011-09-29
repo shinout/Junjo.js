@@ -24,9 +24,15 @@ function junjo_test() {
   $j('L7', report).after();
   $j('L8', report).after('L5');
 
+  $j.on('terminate', function(lbl) {
+    T.equal(lbl, 'L2', "label");
+    this.out.push('L2');
+  });
+
   $j.on('end', function(err, out) {
-    T.equal(out.length, 1, "length of out");
-    T.equal(out[0], 'L1', "value of out");
+    T.equal(out.length, 2, "length of out");
+    T.equal(out[0], 'L1', "value of out0");
+    T.equal(out[1], 'L2', "value of out1");
   });
   $j.run();
 }

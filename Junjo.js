@@ -448,12 +448,8 @@ var Junjo = (function(isNode) {
 
   // terminate operations
   $Scope.prototype.terminate = function() {
-    var lbls = (!arguments.length) ? _(this.junjo).entries.map(function(v) { return v.label }) : args2arr(arguments);
-    lbls.forEach(function(lbl) {
-      this.skip(lbl);
-      var afters = _(this.junjo).afters[lbl];
-      if (afters) this.terminate.apply(this, afters.map(function(v) { return v.label }));
-    }, this);
+   _(this.junjo).$ops.forEach(function($op) { this.skip($op.label) }, this);
+   this.junjo.emit('terminate', this.label);
   };
 
   // skip the operation with a given label, and make it return the passed arguments
