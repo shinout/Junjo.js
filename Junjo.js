@@ -605,7 +605,7 @@ var Junjo = (function(isNode) {
   // call next functions
   var jNext = function(result, skipFailCheck) {
     try {
-      var _this = _(this), $this = $(this), _junjo = _(this.junjo), is_arg = is_arguments(result);
+      var _this = _(this), $this = $(this), _junjo = _(this.junjo), self = this, is_arg = is_arguments(result);
       if ($this.finished) return;
 
       var fsterr = jInheritValue.call(this, 'firstError');
