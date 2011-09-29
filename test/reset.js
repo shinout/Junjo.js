@@ -4,14 +4,13 @@ if (node) junjo_test();
 // test start
 function junjo_test() {
 
-  var $j = new Junjo();
+  var $j = new Junjo(), counter = 0;
   $j.start(function(n) {
-    console.green(n)
     this.out = n || 1;
   });
 
   $j.on('end', function(err, out) {
-    console.log(out);
+    T.equal(out, ++counter);
     if (out < 4) $j.reset().run(out + 1);
   });
   $j.run();

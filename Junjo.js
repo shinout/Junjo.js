@@ -44,7 +44,7 @@ var Junjo = (function(isNode) {
     };
 
     // properties from options
-    ['timeout', 'enterTimeout', 'catcher', 'firstError'].forEach(function(k) { $j[k] = options[k] });
+    ['timeout', 'catcher', 'firstError'].forEach(function(k) { $j[k] = options[k] });
     if (options.result != undefined) _($j).result = !!options.result;
     if (options.after  != undefined) _($j).after  = !!options.after;
     if (options.run) nextTick(function() { $j.run.apply($j, is_arguments(options.run) ? options.run : [options.run]) });
@@ -67,11 +67,6 @@ var Junjo = (function(isNode) {
     running  : { get : function () { return this.ready && $(this).running }, set : E },
     ended    : { get : function () { return this.ready && $(this).ended }, set : E },
     size     : { get : function () { return _(this).$ops.length }, set : E },
-
-    enterTimeout: {
-      get : function() { return (_(this).enterTimeout != null) ? _(this).enterTimeout : 5 },
-      set : function(v) { if (typeof v == 'number') _(this).enterTimeout = v }
-    },
 
     timeout : {
       get : function() { return (_(this).timeout != null) ? _(this).timeout : 5 },
@@ -170,7 +165,7 @@ var Junjo = (function(isNode) {
 
   // inherit settings of given Junjo instance
   Junjo.preps.inherit = function($j) {
-    ['timeout', 'enterTimeout', 'catcher', 'firstError'].forEach(function(k) { this[k] = $j[k] }, this);
+    ['timeout', 'catcher', 'firstError'].forEach(function(k) { this[k] = $j[k] }, this);
     return this;
   };
 
@@ -271,20 +266,7 @@ var Junjo = (function(isNode) {
     return $this.skips[lbl];
   };
 
-  Junjo.prototype.enter = function() {
-    if (!this.ready) this.prepare();
-    var lbl = A.shift.call(arguments), $this = $(this), _this = _(this), $op = this.get(lbl), timeout = this.enterTimeout;
-    if ($this.enterTimeout) clearTimeout($this.enterTimeout);
-    $this.running = true;
-    if (_($op).befores.length) throw new Error('cannot enter the operation "' + lbl + '" which has dependencies.');
-    jExecute.call(this.get(lbl), args2arr(arguments));
-    if (timeout && !_this.entries.every(function($op) { return $this.called[$op.label] })) {
-      $this.enterTimeout = setTimeout(this.run.bind(this), timeout * 1000);
-    }
-    return this;
-  };
-
-   // run all the registered operations
+  // run all the registered operations
   Junjo.prototype.run = function() {
     if (!this.ready) this.prepare();
     if (this.ended) return this;
