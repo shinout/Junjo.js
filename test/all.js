@@ -2,6 +2,7 @@ var Junjo = require('../Junjo');
 var $j    = new Junjo();
 var fs    = require('fs');
 var exec  = require('child_process').exec;
+var cl    = require('../lib/termcolor').define();
 var ignores = [
   'load.test.js',
   'all.js',
@@ -30,8 +31,20 @@ $j('exec', function(files) {
 .after()
 .reduce(function(result, args, filename) {
   console.log('------------------------------------[' + filename + ']------------------------------------'); 
-  if (args[0]) console.error(args[0]); 
+  if (args[0]) console.ered(args[0]); 
   console.log(args[1]); 
-}, {});
+  console.yellow(args[2]);
+  if (args[0] || args[2]) result.push(filename);
+  return result;
+}, [])
+.out(0);
 
+$j.on('end', function(err, out) {
+  if (out) {
+    console.red('ERRORS IN ', out.join(', '));
+  }
+  else {
+    console.green('ALL PASSED');
+  }
+});
 $j.run();
