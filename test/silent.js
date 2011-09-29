@@ -11,7 +11,7 @@ function junjo_test() {
   });
 
   $j('2nd', function() {
-    T.ok(true);
+    T.fail("");
   });
 
   $j.on('end', function(err, out) {
@@ -19,13 +19,4 @@ function junjo_test() {
   });
 
   $j.run();
-
-  var $j2 = $j.clone().silent(true);
-  $j2.remove('2nd');
-
-  $j2('2nd', function() {
-    T.fail("");
-  });
-
-  $j2.run();
 }

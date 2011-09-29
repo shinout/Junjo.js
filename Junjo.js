@@ -90,7 +90,8 @@ var Junjo = (function(isNode) {
 
     defaultCatcher : {
       value : function(e, args) {
-        console.log('ERROR in label ' + this.label, e.stack || e.message || e);
+        if (!_(this.junjo).silent) console.log('ERROR in label ' + this.label, e.stack || e.message || e);
+        e.args = args;
         this.err = e;
         this.terminate();
       },
@@ -173,11 +174,8 @@ var Junjo = (function(isNode) {
     return this;
   };
 
-  // throw no errors
-  Junjo.preps.silent = function(terminate) {
-    this.catcher = function(e) { this.err = e; if (terminate) this.terminate()}
-    return this;
-  };
+  // no error report to stdout in defaultCatcher
+  Junjo.preps.silent = function() { _(this).silent = arguments.length ? !!arguments[0] : true; return this };
 
   // register a function executed on run()
   Junjo.preps.start = function(fn) { if (typeof fn == 'function') _(this).start = fn };
