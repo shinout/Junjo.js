@@ -40,7 +40,7 @@ $j('exec', function(files) {
 .out(0);
 
 $j.on('end', function(err, out) {
-  if (out) {
+  if (out.length) {
     console.red('ERRORS IN ', out.join(', '));
   }
   else {
