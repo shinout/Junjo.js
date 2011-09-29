@@ -475,6 +475,10 @@ var Junjo = (function(isNode) {
   ['pre', 'post']
   .forEach(function(p) { Operation.prototype[p] = function(fn) { if (typeof fn == 'function') { _(this)[p] = mask(fn) } return this } });
 
+  ['err', 'out']
+  .forEach(function(p) { Operation.prototype[p] = function(n) { _(this)[p + 'num'] = (!isNaN(Number(n))) ? n : 0; return this } });
+  Operation.prototype.errout = function() { this.err(0); return this.out(1) };
+
   Operation.prototype.reduce = function(fn, prime) {
     if (typeof fn == 'function') { _(this).reduce = {fn: mask(fn), prime: prime} } return this;
   };
@@ -619,11 +623,11 @@ var Junjo = (function(isNode) {
   // call next functions
   var jNext = function(result, skipFailCheck) {
     try {
-      var _this = _(this), $this = $(this), _junjo = _(this.junjo);
+      var _this = _(this), $this = $(this), _junjo = _(this.junjo), is_arg = is_arguments(result);
       if ($this.finished) return;
 
       var fsterr = jInheritValue.call(this, 'firstError');
-      if (fsterr && is_arguments(result)) {
+      if (fsterr && is_arg) {
         if (result[0]) throw result[0];
         if (fsterr == SHIFT) A.shift.call(result);
       }
@@ -637,9 +641,15 @@ var Junjo = (function(isNode) {
           : jExecute.call(this, args, {loop: l}, true);
       }
       if (_this.post) {
-        var postResult = _this.post.apply($this.$scope, is_arguments(result) ? result : [result]);
+        var postResult = _this.post.apply($this.$scope, is_arg ? result : [result]);
         if (postResult !== undefined) result = postResult;
       }
+
+      ['out', 'err'].forEach(function(p) {
+        var n = _this[p + 'num'];
+        if ( n !== undefined && (is_arg || n == 0)) this.junjo[p] = is_arg ? result[n] : result;
+      }, this);
+
       $this.finished = true;
     }
     catch (e) { if (!skipFailCheck) return jFail.call(this, e) }
