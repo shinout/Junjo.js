@@ -38,7 +38,8 @@ var Junjo = (function(isNode) {
     props[$j.id] = {
       $ops         : [],    // registered operations
       labels       : {},    // {label => position of $ops}
-      afters       : {},    // list of labels of functions executing after the function with label of the key (label => op)
+      afters       : {},    // list of labels of functions executing after the function with label of the key (label => [op])
+      befores      : {},    // list of labels of functions executing after the function with label of the key (label => [label])
       listeners    : {},    // eventlisteners
       result       : false  // if true and all processes are synchronous, return result at $j.run()
     };
@@ -111,6 +112,7 @@ var Junjo = (function(isNode) {
 
     var $op = new Operation(arguments[0], label, this);
     _this.labels[label] = _this.$ops.push($op) -1;
+    _this.befores[label] = [], _this.afters[label] = [];
     return _this.after ? $op.after() : $op;
   };
 
@@ -180,11 +182,10 @@ var Junjo = (function(isNode) {
     var  _this = _(this), $ops = _this.$ops, visited = {};
 
     _this.entries = $ops.filter(function($op) {
-      var befores = _($op).befores;
+      var befores = _this.befores[$op.label];
       befores.forEach(function(lbl) {
         var before = this.get(lbl);
         if (!before) throw new Error('label ' + lbl + ' is not registered. in label ' + $op.label);
-        if ( !_this.afters[before.label]) _this.afters[before.label] = [];
         _this.afters[before.label].push($op);
       }, this);
       return befores.length == 0;
@@ -196,7 +197,7 @@ var Junjo = (function(isNode) {
       if (!Array.isArray(ancestors)) ancestors = [];
       ancestors.push($op.label);
       visited[$op.label] = true;
-      if (_this.afters[$op.label]) _this.afters[$op.label].forEach(function($ch) {
+      _this.afters[$op.label].forEach(function($ch) {
         if (ancestors.indexOf($ch.label) >= 0) throw new Error('closed chain:' +  $ch.label + ' is in ' + $op.label);
         visit($ch, args2arr(ancestors));
       });
@@ -215,16 +216,18 @@ var Junjo = (function(isNode) {
     }
   });
 
-  // copy this and create new Junjo
+  // copy this and create new Junjo #FIXME ( after() is not working, and so on...)
   Junjo.prototype.clone = function() {
     var $j = new Junjo(), _this = _(this), _that = _($j);
     Object.keys(_this).forEach(function(k) { _that[k] = _this[k] });
+    _that.ready = false, _that.entries = [], _that.afters = {};
+
     _this.$ops.forEach(function($op, k) {
+      _that.afters[$op.label] = [];
       _that.$ops[k] = new Operation($op.fn, $op.label, $j);
       var _$op = _($op), _$new = _(_that.$ops[k]);
       Object.keys(_($op)).forEach(function(i) { _$new[i] = _$op[i] });
     });
-    _that.ready = false, _that.entries = [], _that.afters = {};
     return $j;
   };
 
@@ -257,8 +260,7 @@ var Junjo = (function(isNode) {
     if(this.running) return this;
     var lbl = A.shift.call(arguments), $this = $(this), _this = _(this), that = this;
     $this.skips[lbl] = arguments;
-    _(this.get(lbl)).befores.forEach(function(l) {
-      if (!_this.afters[l]) return that.shortcut(l);
+    _this.befores[lbl].forEach(function(l) {
       if (_this.afters[l].every(function($op) {
         return ($this.skips[$op.label] !== undefined);
       })) return that.shortcut(l);
@@ -286,6 +288,7 @@ var Junjo = (function(isNode) {
   /** private functions **/
 
   var resetState = function() {
+    var _this = _(this);
     var $this = variables[this.id] = {
       running      : false, // registered processes are running or not
       results      : {},    // results of each functions
@@ -298,7 +301,8 @@ var Junjo = (function(isNode) {
       out          : new E, // final output to pass to the "end" event
       shared       : {}     // shared values within $ops
     };
-    _(this).$ops.forEach(function($op) { $this.counters[$op.label] = _($op).befores.length - 1 || 0 });
+
+    _this.$ops.forEach(function($op) { $this.counters[$op.label] = _this.befores[$op.label].length - 1 || 0 });
   };
 
   var setResult = function($op, result) {
@@ -446,9 +450,7 @@ var Junjo = (function(isNode) {
     O(this, 'id', { value : junjo.id + '.' + label, writable : false});
 
     // private properties
-    props[this.id] = {
-      befores : [], // labels of functions executed before this function
-    };
+    props[this.id] = {};
   };
 
   Operation.prototype.timeout = function(v) { if (typeof v == "number") _(this).timeout = v; return this };
@@ -476,7 +478,8 @@ var Junjo = (function(isNode) {
     if (arguments.length == 0 && this.junjo.size > 1)
       A.push.call(arguments, _junjo.$ops[_junjo.labels[lbl]-1].label);
 
-    A.forEach.call(arguments, function(l) { if (l != lbl && _this.befores.indexOf(l) < 0) _this.befores.push(l) });
+    var befores = _junjo.befores[lbl];
+    A.forEach.call(arguments, function(l) { if (l != lbl && befores.indexOf(l) < 0) befores.push(l) });
     return this;
   };
 
@@ -539,9 +542,10 @@ var Junjo = (function(isNode) {
     jResetState.call(this, prevState);
     var $this = $(this);
     $junjo.called[label] = true;
+    var befores = _(this.junjo).befores[label];
 
-    if (_this.befores.length) {
-      $this.args = _this.befores.reduce(function(arr, lbl) {
+    if (befores.length) {
+      $this.args = befores.reduce(function(arr, lbl) {
         var val = $junjo.results[lbl];
         if (is_arguments(val)) A.forEach.call(val, function(v) { arr.push(v) });
         else arr.push(val);
@@ -636,7 +640,7 @@ var Junjo = (function(isNode) {
     }
     catch (e) { if (!skipFailCheck) return jFail.call(this, e) }
     setResult.call(this.junjo, this, result);
-    if (afters = _junjo.afters[this.label]) afters.forEach(function($op) { jExecute.call($op) }, this);
+    _junjo.afters[this.label].forEach(function($op) { jExecute.call($op) }, this);
   };
 
   Junjo.isNode  = isNode;
