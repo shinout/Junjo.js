@@ -173,6 +173,12 @@ var Junjo = (function(isNode) {
     return this;
   };
 
+  // throw no errors
+  Junjo.preps.silent = function(terminate) {
+    this.catcher = function(e) { this.err = e; if (terminate) this.terminate()}
+    return this;
+  };
+
   // register a function executed on run()
   Junjo.preps.start = function(fn) { if (typeof fn == 'function') _(this).start = fn };
 
