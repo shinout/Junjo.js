@@ -16,10 +16,12 @@ T.__proto__.total = function() { return this.success + '/' + this.count };
         assert[n].apply(assert, arguments);
         this.success++;
         console.green('[OK]', this.total(),  n, name);
+        return true;
       }
       catch (e) {
         console.ered('[NG]', this.total(), n, name);
         console.eblue(e.stack);
+        return false;
       }
     }
   })(fname);
