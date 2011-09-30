@@ -18,8 +18,8 @@ T.__proto__.total = function() { return this.success + '/' + this.count };
         console.green('[OK]', this.total(),  n, name);
       }
       catch (e) {
-        console.red('[NG]', this.total(), n, name);
-        console.blue(e.stack);
+        console.ered('[NG]', this.total(), n, name);
+        console.eblue(e.stack);
       }
     }
   })(fname);

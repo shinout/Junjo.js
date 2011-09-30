@@ -393,7 +393,7 @@ var Junjo = (function(isNode) {
     emitter.on('error', jFail.bind(this));
     var cb = this.callbacks(name, isSub);
     emitter.on('end', function(err, out) {
-      if (Junjo.isJunjo(emitter)) $this.absorbErrs[name] = err, $this.absorbs[name] = out;
+      if (Junjo.isJunjo(emitter) && !$this.absorbs[name]) $this.absorbErrs[name] = err, $this.absorbs[name] = out;
       cb($this.absorbErrs[name], $this.absorbs[name]);
     });
     return this;
