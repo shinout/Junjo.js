@@ -283,6 +283,13 @@ var Junjo = (function(isNode) {
     return ($this.ended && _this.result) ? $this.out : this;
   };
 
+  // run with callback
+  Junjo.prototype.exec = function() {
+    var fn = A.pop.call(arguments);
+    this.on('end', fn);
+    return this.run.apply(this, arguments);
+  };
+
   Junjo.prototype.reset = function() { if (this.ended) resetState.call(this); return this };
 
   /** private functions **/
