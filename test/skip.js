@@ -12,7 +12,7 @@ function junjo_test() {
   };
 
   var skip = function() {
-    this.skip();
+    this.skip(this.label, 'skipped');
   };
 
   $j('L1', report);
@@ -26,6 +26,7 @@ function junjo_test() {
 
   $j.on('end', function(err, out) {
     T.equal(out.length, 5, "length of out");
+    console.log(out)
   });
   $j.run();
 }

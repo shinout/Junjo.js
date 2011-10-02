@@ -312,11 +312,14 @@ var Junjo = (function(isNode) {
     _this.$ops.forEach(function($op) { $this.counters[$op.label] = _this.befores[$op.label].length - 1 || 0 });
   };
 
-  var setResult = function($op, result) {
+  // set result and run next operations
+  var runNext = function($op, result) {
     var $this = $(this);
+    $($op).finished = true;
     $this.finished++;
     $this.results[$op.label] = result;
     finishCheck.call(this);
+    _(this).afters[$op.label].forEach(function($c) { jExecute.call($c) });
   };
 
   var finishCheck = function() {
@@ -428,7 +431,7 @@ var Junjo = (function(isNode) {
     }
 
     var result = mask(jInheritValue.call(this, 'catcher')).call($this.$scope, e, $this.args);
-    return jNext.call(this, result, true); // pass the second arg to avoid infinite loop
+    return jResultFilter.call(this, result, true); // pass the second arg to avoid infinite loop
   };
 
   Object.keys($Scope.proto)
@@ -527,7 +530,7 @@ var Junjo = (function(isNode) {
       absorbs      : {},    // absorbed data from emitters (name => absorbed data)
       absorbErrs   : {},    // absorbed error from emitters (name => absorbed error)
       done         : false, // execution ended or not
-      finished     : false, // whether jNext is normally finished called or not.
+      finished     : false, // whether jResultFilter is normally finished called or not.
       cb_accessed  : false, // whether callback is accessed or not
       trial        : 0,
       cb_count     : 0,
@@ -562,7 +565,7 @@ var Junjo = (function(isNode) {
     else $this.args = args;
 
     try {
-      if ($junjo.skips[label] != null) return jNext.call(this, $junjo.skips[label], true); // ignore firstError
+      if ($junjo.skips[label] != null) return jResultFilter.call(this, $junjo.skips[label]);
 
       if (_this.loop) {
         if (!$this.loop) $this.loop = { result: null, count: 0};
@@ -570,13 +573,13 @@ var Junjo = (function(isNode) {
         l.args = args ? args.map(function(v) {return v}) : null;
         $this.args.push(l.result, l.count);
         l.finished = !_this.loop.call($this.$scope, l.result, l.args, l.count);
-        if (l.finished) return jNext.call(this, l.result);
+        if (l.finished) return jResultFilter.call(this, l.result);
       }
 
       if (_this.pre) $this.args = _this.pre.apply($this.$scope, $this.args);
       var ret = this.fn.apply($this.$scope, $this.args); // execution
       $this.done = true;
-      if (_this.async === false || _this.async == null && !$this.cb_accessed) return jNext.call(this, ret);
+      if (_this.async === false || _this.async == null && !$this.cb_accessed) return jResultFilter.call(this, ret);
       if ($this.cb_attempted) return jCallback.apply(this, $this.cb_attempted, $this.trial);
       if (!jInheritValue.call(this, 'timeout')) return;
 
@@ -610,44 +613,50 @@ var Junjo = (function(isNode) {
     }
     else $this.result = arguments;
     if (--$this.cb_count > 0) return;
-    return jNext.call(this, $this.result);
+    return jResultFilter.call(this, $this.result);
   };
 
-  // call next functions
-  var jNext = function(result, skipFailCheck) {
+  // modify result
+  var jResultFilter = function(result, skipFailCheck) {
     try {
-      var _this = _(this), $this = $(this), _junjo = _(this.junjo), self = this, is_arg = is_arguments(result);
+      var _this = _(this), $this = $(this), self = this, is_arg = is_arguments(result);
       if ($this.finished) return;
 
-      var fsterr = jInheritValue.call(this, 'firstError');
+      if ($(this.junjo).skips[this.label] != null)  // if skip flag is on, omit following processes
+        return jNext.call(this, $(this.junjo).skips[this.label]);
+
+      var fsterr = jInheritValue.call(this, 'firstError'); // checking firstError
       if (fsterr && is_arg) {
         if (result[0]) throw result[0];
         if (fsterr == SHIFT) A.shift.call(result);
       }
       if ($this.timeout_id) clearTimeout($this.timeout_id); // remove tracing callback
 
-      if ($this.loop && !$this.loop.finished) {
+      if ($this.loop && !$this.loop.finished) { // if loop, this operation is executed again.
         var l = $this.loop, args = l.args;
         l.count++, l.result = result;
         return (_this.loop.nextTick)
           ? nextTick(function() { jExecute.call(self, args, {loop: l}, true) })
           : jExecute.call(this, args, {loop: l}, true);
       }
-      if (_this.post) {
+      if (_this.post) { // post executing process
         var postResult = _this.post.apply($this.$scope, is_arg ? result : [result]);
         if (postResult !== undefined) result = postResult;
       }
 
-      ['out', 'err'].forEach(function(p) {
-        var n = _this[p + 'num'];
-        if ( n !== undefined && (is_arg || n == 0)) this.junjo[p] = is_arg ? result[n] : result;
-      }, this);
-
-      $this.finished = true;
     }
     catch (e) { if (!skipFailCheck) return jFail.call(this, e) }
-    setResult.call(this.junjo, this, result);
-    _junjo.afters[this.label].forEach(function($op) { jExecute.call($op) }, this);
+    jNext.call(this, result);
+  };
+
+  // execute next operations
+  var jNext = function(result) {
+    var _this = _(this), is_arg = is_arguments(result);
+    ['out', 'err'].forEach(function(p) { // setting err, out information
+      var n = _this[p + 'num'];
+      if ( n !== undefined && (is_arg || n == 0)) this.junjo[p] = is_arg ? result[n] : result;
+    }, this);
+    runNext.call(this.junjo, this, result);
   };
 
   Junjo.isNode  = isNode;
