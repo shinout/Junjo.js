@@ -37,6 +37,7 @@ $j('exec', function(files) {
   if (args[0] || args[2]) result.push(filename);
   return result;
 }, [])
+.timeout(0)
 .out(0);
 
 $j.on('end', function(err, out) {

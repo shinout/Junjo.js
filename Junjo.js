@@ -344,6 +344,7 @@ var Junjo = (function(isNode) {
 
   ['callback', 'cb']
   .forEach(function(p) { O($Scope.prototype, p, { get : function() { return this.callbacks(0) }, set : E }) });
+  O($Scope.prototype, 'fail', { get : function() { return jFail.bind(this) }, set : E });
 
   O($Scope.prototype, 'sub', {
     get : function() {
@@ -419,20 +420,6 @@ var Junjo = (function(isNode) {
     }, name);
   };
   $Scope.proto.gather = $Scope.proto.absorbData;
-
-  var jFail = $Scope.proto.fail = function(e) {
-    if ($(this).finished) return;
-    var $this = $(this), self = this;
-    var _retry = _(this).retry;
-    if (_retry && _retry.call($this.$scope, e, $this.args, ++$this.trial)){
-      return (_retry.nextTick)
-        ? nextTick(function() {jExecute.call(self, null, {trial: $this.trial}, true)})
-        : jExecute.call(this, null, {trial: $this.trial}, true);
-    }
-
-    var result = mask(jInheritValue.call(this, 'catcher')).call($this.$scope, e, $this.args);
-    return jResultFilter.call(this, result, true); // pass the second arg to avoid infinite loop
-  };
 
   Object.keys($Scope.proto)
   .forEach(function(k) { $Scope.prototype[k] = function() { return (!$(this).mask) ? $Scope.proto[k].apply(this, arguments) : null } });
@@ -599,6 +586,20 @@ var Junjo = (function(isNode) {
   };
 
   var jInheritValue = function(k) { var v = _(this)[k]; return (v == null) ? this.junjo[k] : v };
+
+  var jFail = function(e) {
+    if ($(this).finished) return;
+    var $this = $(this), self = this;
+    var _retry = _(this).retry;
+    if (_retry && _retry.call($this.$scope, e, $this.args, ++$this.trial)){
+      return (_retry.nextTick)
+        ? nextTick(function() {jExecute.call(self, null, {trial: $this.trial}, true)})
+        : jExecute.call(this, null, {trial: $this.trial}, true);
+    }
+
+    var result = mask(jInheritValue.call(this, 'catcher')).call($this.$scope, e, $this.args);
+    return jResultFilter.call(this, result, true); // pass the second arg to avoid infinite loop
+  };
 
   var jCallback = function() {
     var $this = $(this), reduce = _(this).reduce;
