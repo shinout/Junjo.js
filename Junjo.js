@@ -563,7 +563,10 @@ var Junjo = (function(isNode) {
         if (l.finished) return jResultFilter.call(this, l.result);
       }
 
-      if (_this.pre) $this.args = _this.pre.apply($this.$scope, $this.args);
+      if (_this.pre) {
+        var preResult = _this.pre.apply($this.$scope, $this.args);
+        if (preResult !== undefined) $this.args = (is_arguments(preResult)) ? preResult : [preResult];
+      }
       var ret = this.fn.apply($this.$scope, $this.args); // execution
       $this.done = true;
       if (_this.async === false || _this.async == null && !$this.cb_accessed) return jResultFilter.call(this, ret);
