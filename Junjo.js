@@ -220,14 +220,11 @@ var Junjo = (function(isNode) {
   Junjo.prototype.clone = function() {
     var $j = new Junjo(), _this = _(this), _that = _($j);
     Object.keys(_this).forEach(function(k) { _that[k] = _this[k] });
-    _that.ready = false, _that.entries = [], _that.afters = {};
+    _that.ready = false, _that.entries = [], _that.$ops = [], _that.labels = {}, _that.listeners = [];
+    _that.afters = {}, _that.befores = {};
+    _this.$ops.forEach(function($op, k) { $op.clone($j) });
+    Object.keys(_this.befores).forEach(function(k) { _that.befores[k] = _this.befores[k].map(function(v) { return v}) });
 
-    _this.$ops.forEach(function($op, k) {
-      _that.afters[$op.label] = [];
-      _that.$ops[k] = new Operation($op.fn, $op.label, $j);
-      var _$op = _($op), _$new = _(_that.$ops[k]);
-      Object.keys(_($op)).forEach(function(i) { _$new[i] = _$op[i] });
-    });
     return $j;
   };
 
@@ -314,6 +311,7 @@ var Junjo = (function(isNode) {
 
   // set result and run next operations
   var runNext = function($op, result) {
+
     var $this = $(this);
     $($op).finished = true;
     $this.finished++;
@@ -461,7 +459,7 @@ var Junjo = (function(isNode) {
   Operation.prototype.errout = function() { this.err(0); return this.out(1) };
 
   Operation.prototype.reduce = function(fn, prime) {
-    if (typeof fn == 'function') { _(this).reduce = {fn: mask(fn), prime: prime} } return this;
+    if (typeof fn == 'function') { _(this).reduce = fn = mask(fn), fn.prime = prime } return this;
   };
 
   Operation.prototype.firstError = function(val) {
@@ -507,6 +505,12 @@ var Junjo = (function(isNode) {
     else if (typeof val == 'function') _this.loop = mask(val);
     _this.loop.nextTick = !!nextTick;
     return this;
+  };
+
+  Operation.prototype.clone = function($j) {
+    var _this = _(this), $op = $j.register(this.label, this.fn), _$op = _($op);
+    Object.keys(_this).forEach(function(k) { _$op[k] = _this[k] });
+    return $op;
   };
 
   /** private functions of Operation **/
@@ -612,7 +616,7 @@ var Junjo = (function(isNode) {
     var trial = A.shift.call(arguments);
     if (trial < $this.trial) return;
     if (reduce) {
-      var v = _(this).reduce.fn.call($this.$scope, $this.result || reduce.prime, arguments, key)
+      var v = _(this).reduce.call($this.$scope, $this.result || reduce.prime, arguments, key)
       $this.result =  (v !== undefined) ? v : $this.result;
     }
     else $this.result = arguments;
@@ -647,7 +651,6 @@ var Junjo = (function(isNode) {
         var postResult = _this.post.apply($this.$scope, is_arg ? result : [result]);
         if (postResult !== undefined) result = postResult;
       }
-
     }
     catch (e) { if (!skipFailCheck) return jFail.call(this, e) }
     jNext.call(this, result);
