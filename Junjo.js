@@ -439,6 +439,7 @@ var Junjo = (function(isNode) {
   $Scope.prototype.skip = function() {
     var lbl = arguments.length ? A.shift.call(arguments) : this.label, $junjo = $(this.junjo);
     if ($junjo.skips[lbl] === undefined) $junjo.skips[lbl] = arguments;
+    if (this.label == lbl) nextTick(jResultFilter.bind(this, arguments));
   };
 
   /** Operation : registered operation in Junjo  **/
@@ -642,7 +643,6 @@ var Junjo = (function(isNode) {
         if (result[0]) throw result[0];
         if (fsterr == SHIFT) A.shift.call(result);
       }
-      if ($this.timeout_id) clearTimeout($this.timeout_id); // remove tracing callback
 
       if ($this.loop && !$this.loop.finished) { // if loop, this operation is executed again.
         var l = $this.loop, args = l.args;
@@ -662,11 +662,12 @@ var Junjo = (function(isNode) {
 
   // execute next operations
   var jNext = function(result) {
-    var _this = _(this), is_arg = is_arguments(result);
+    var _this = _(this), is_arg = is_arguments(result), timeout_id;
     ['out', 'err'].forEach(function(p) { // setting err, out information
       var n = _this[p + 'num'];
       if ( n !== undefined && (is_arg || n == 0)) this.junjo[p] = is_arg ? result[n] : result;
     }, this);
+    if (timeout_id = $(this).timeout_id) clearTimeout(timeout_id); // remove tracing callback
     runNext.call(this.junjo, this, result);
   };
 
