@@ -24,9 +24,7 @@ var Junjo = (function(isNode) {
     var options = (typeof arguments[0] == 'object') ? arguments[0] : {};
 
     // this function $j is returned in Junjo().
-    var $j = function() {
-      return $j[(typeof arguments[arguments.length -1] == 'function')? 'register' : 'inputs'].apply($j, arguments);
-    };
+    var $j = function() { return $j.register.apply($j, arguments) };
 
     // $j extends Junjo.prototype
     if ($j.__proto__) $j.__proto__ = Junjo.prototype;
@@ -120,6 +118,10 @@ var Junjo = (function(isNode) {
   Junjo.preps.inputs = function() {
     if (arguments.length == 1 && typeof arguments[0] == 'object') {
       var obj = arguments[0];
+      if (Array.isArray(obj)) {
+        obj.forEach(function(name, k) { this.inputs.apply(this, [name, k]) }, this);
+        return this;
+      }
       Object.keys(obj).forEach(function(k) {
         var v = Array.isArray(obj[k]) ? obj[k] : [obj[k]];
         v.unshift(k);

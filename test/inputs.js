@@ -14,15 +14,17 @@ function junjo_test() {
 
   var $j = new Junjo();
 
-  $j('A', 0);
-  $j('BC', 1, 2);
-  $j('AC', 0, 2);
+  $j.inputs('A', 0);
+  $j.inputs('BC', 1, 2);
+  $j.inputs('AC', 0, 2);
 
   $j.inputs({
     AB : [0,1],
   });
 
-  $j({
+  $j.inputs(["a", "b", "c"]);
+
+  $j.inputs({
     ABC: [0,1,2],
     B  : 1,
     C  : [2]
@@ -42,6 +44,10 @@ function junjo_test() {
     T.equal(out.A[0], 'a', 'value of out.A[0]');
     T.equal(out.B[0], 'b', 'value of out.B[0]');
     T.equal(out.C[0], 'c', 'value of out.C[0]');
+
+    T.equal(out.a[0], "a", 'value of out.a');
+    T.equal(out.b[0], "b", 'value of out.b');
+    T.equal(out.c[0], "c", 'value of out.c');
 
     T.equal(out.AB.length , 2, 'length of out.AB');
     T.equal(out.AC.length , 2, 'length of out.AC');
