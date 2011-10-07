@@ -481,6 +481,7 @@ var Junjo = (function(isNode) {
     _(this).firstError = val;
     return this;
   };
+  Operation.prototype.eshift = function(val) { return this.firstError(SHIFT) };
 
   Operation.prototype.after = function() {
     var _this = _(this), _junjo = _(this.junjo), lbl = this.label;
