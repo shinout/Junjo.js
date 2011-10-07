@@ -9,12 +9,14 @@ function junjo_test() {
 
   $j('request', function(url) {
     var options = u2r(url);
-    var req = http.request(options, this.cb);
+    console.log(options)
+    var req = http.request(url, this.cb);
     req.end();
     req.on("error", this.fail);
   })
   .fail(function(e) {
-    T.equal(e.message, "ENOTFOUND, Domain name not found");
+    console.log(e.message)
+    T.equal(e.message, "EAFNOSUPPORT, Address family not supported by protocol family", "error message");
     this.terminate();
   });
 
@@ -24,7 +26,7 @@ function junjo_test() {
   .firstError('shift')
   .after();
 
-  $j.exec("localll", function(err, out) {
+  $j.exec("localhost", function(err, out) {
     T.equal(out.request.length, 0, 'result of response');
     T.equal(out.response.length, 0, 'result of response');
   });

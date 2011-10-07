@@ -15,7 +15,7 @@ var Junjo = (function(isNode) {
 
   var props = {}, variables = {}, current_id = 0;
   function _(obj) { return props[obj.id] }        // configurable properties before running
-  function $(obj) { return variables[obj.id] }    // configurable properties after  running
+  function $(obj) { return variables[obj.id] || {} }    // configurable properties after  running
   function D(obj) { delete props[obj.id], variables[obj.id]} // deletion
 
   /** constructor **/
@@ -101,7 +101,7 @@ var Junjo = (function(isNode) {
 
   // register a function
   Junjo.preps.register = function() {
-    var label = (typeof arguments[0] != 'function') ? A.shift.call(arguments) : undefined;
+    var label = (arguments.length > 1) ? A.shift.call(arguments) : undefined;
     if (Junjo.isJunjo(arguments[0])) return this.register(label, getSubFunc(arguments[0]));
 
     var _this = _(this);
@@ -129,10 +129,16 @@ var Junjo = (function(isNode) {
       }, this);
       return this;
     }
-    var label = A.shift.call(arguments), args = A.filter.call(arguments, function(v) {return !isNaN(Number(v)) });
+    var label = A.shift.call(arguments), nums = A.filter.call(arguments, function(v) {return !isNaN(Number(v)) });
     return this.register(label, function() {
-      return Junjo.multi.apply(null, args.map(function(n) { return this.inputs[n] }, this));
+      var args = nums.map(function(n) { return this.inputs[n] }, this);
+      args.unshift(this.label);
+      this.skip.apply(this, args);
     });
+  };
+
+  var Future = function(n) {
+    return this.inputs[n];
   };
 
   // get $op by label. this is just getting, so this can be called after prepare().
@@ -338,7 +344,7 @@ var Junjo = (function(isNode) {
   var $Scope = function($op) { O(this, '$op', { value : $op, writable : false}) };
   $Scope.proto = {};
 
-  ['label', 'junjo', 'fn', 'id']
+  ['label', 'junjo', 'val', 'id']
   .forEach(function(p) { O($Scope.prototype, p, { get : function() { return this.$op[p] }, set: E }) });
 
   ['shared', 'err', 'out', 'inputs'].forEach(function(p) {
@@ -445,8 +451,8 @@ var Junjo = (function(isNode) {
   };
 
   /** Operation : registered operation in Junjo  **/
-  var Operation = function(fn, label, junjo) {
-    O(this, 'fn', { value : fn, writable : false});
+  var Operation = function(val, label, junjo) {
+    O(this, 'val', { value : val, writable : false});
     O(this, 'label', { value : label, writable : false });
     O(this, 'junjo', { value : junjo, writable : false });
     O(this, 'id', { value : junjo.id + '.' + label, writable : false});
@@ -484,6 +490,7 @@ var Junjo = (function(isNode) {
     A.forEach.call(arguments, function(l) { if (l != lbl && befores.indexOf(l) < 0) befores.push(l) });
     return this;
   };
+  Operation.prototype.using = Operation.prototype.after;
 
   Operation.prototype.afterAbove = function(bool) {
     return this.after.apply(this, _(this.junjo).$ops.map(function($op) { return $op.label }));
@@ -515,7 +522,7 @@ var Junjo = (function(isNode) {
   };
 
   Operation.prototype.clone = function($j) {
-    var _this = _(this), $op = $j.register(this.label, this.fn), _$op = _($op);
+    var _this = _(this), $op = $j.register(this.label, this.val), _$op = _($op);
     Object.keys(_this).forEach(function(k) { _$op[k] = _this[k] });
     return $op;
   };
@@ -546,6 +553,7 @@ var Junjo = (function(isNode) {
   var jExecute = function(args, prevState, force) {
     var _this  = _(this), label = this.label, $junjo = $(this.junjo);
     if ($junjo.counters[label]-- > 0 || ($junjo.called[label] && !force)) return;
+    if (typeof this.val != 'function') return jNext.call(this, this.val);
 
     jResetState.call(this, prevState);
     var $this = $(this);
@@ -578,7 +586,7 @@ var Junjo = (function(isNode) {
         var preResult = _this.pre.apply($this.$scope, $this.args);
         if (preResult !== undefined) $this.args = (is_arguments(preResult)) ? preResult : [preResult];
       }
-      var ret = this.fn.apply($this.$scope, $this.args); // execution
+      var ret = this.val.apply($this.$scope, $this.args); // execution
       $this.done = true;
       if (_this.async === false || _this.async == null && !$this.cb_accessed) return jResultFilter.call(this, ret);
       if ($this.cb_attempted) return jCallback.apply(this, $this.cb_attempted, $this.trial);
