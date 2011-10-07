@@ -219,7 +219,7 @@ var Junjo = (function(isNode) {
   Object.keys(Junjo.preps)
   .forEach(function(p) {
     Junjo.prototype[p] = function() {
-      if (this.ready) throw new Error('method "' + p + '" cannot be called after prepare(), shortcut(), run() is called.');
+      if (this.ready) throw new Error('method "' + p + '" cannot be called after prepare(), shortcut(), replace(), run() is called.');
       return Junjo.preps[p].apply(this, arguments);
     }
   });
@@ -276,6 +276,7 @@ var Junjo = (function(isNode) {
     });
     return $this.skips[lbl];
   };
+  Junjo.prototype.replace = Junjo.prototype.shortcut;
 
   // run all the registered operations
   Junjo.prototype.run = function() {
