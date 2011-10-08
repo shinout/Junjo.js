@@ -6,7 +6,6 @@ function junjo_test() {
   var $j = new Junjo();
 
   var report = function() {
-    console.log(this.label);
     if (!Array.isArray(this.out)) this.out = [];
     this.out.push(this.label);
   };
@@ -30,9 +29,10 @@ function junjo_test() {
   });
 
   $j.on('end', function(err, out) {
-    T.equal(out.length, 2, "length of out");
+    T.equal(out.length, 3, "length of out");
     T.equal(out[0], 'L1', "value of out0");
-    T.equal(out[1], 'L2', "value of out1");
+    T.equal(out[1], 'L3', "value of out1");
+    T.equal(out[2], 'L2', "value of out2");
   });
   $j.run();
 }

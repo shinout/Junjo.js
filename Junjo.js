@@ -290,9 +290,13 @@ var Junjo = (function(isNode) {
     if (!$this.inputs) $this.inputs = arguments;
     // Object.freeze($this.inputs);
     if (_this.start)  _this.start.apply(this, arguments);
-    _this.entries.forEach(function($op) { jExecute.call($op, args2arr(args)) });
-    finishCheck.call(this);
-    return ($this.ended && _this.result) ? $this.out : this;
+    if (_this.result) {
+      _this.entries.forEach(function($op) { jExecute.call($op, args2arr(args)) });
+      finishCheck.call(this);
+      return ($this.ended) ? $this.out : this;
+    }
+    _this.entries.forEach(function($op) { nextTick(jExecute.bind($op, args2arr(args))) });
+    return this;
   };
 
   // run with callback
@@ -327,12 +331,15 @@ var Junjo = (function(isNode) {
   // set result and run next operations
   var runNext = function($op, result) {
 
-    var $this = $(this);
+    var $this = $(this), _this = _(this);
     $($op).finished = true;
     $this.finished++;
     $this.results[$op.label] = result;
     finishCheck.call(this);
-    _(this).afters[$op.label].forEach(function($c) { jExecute.call($c) });
+    _this.afters[$op.label].forEach(function($c) { 
+      if (!_this.result) { nextTick(jExecute.bind($c)) }
+      else  { jExecute.call($c) }
+    });
   };
 
   var finishCheck = function() {
@@ -682,6 +689,7 @@ var Junjo = (function(isNode) {
       var n = _this[p + 'num'];
       if ( n !== undefined && (is_arg || n == 0)) this.junjo[p] = is_arg ? result[n] : result;
     }, this);
+
     if (timeout_id = $(this).timeout_id) clearTimeout(timeout_id); // remove tracing callback
     runNext.call(this.junjo, this, result);
   };
