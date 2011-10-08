@@ -39,6 +39,7 @@ var Junjo = (function(isNode) {
       afters       : {},    // list of labels of functions executing after the function with label of the key (label => [op])
       befores      : {},    // list of labels of functions executing after the function with label of the key (label => [label])
       listeners    : {},    // eventlisteners
+      replaces     : {},    // replace info
       result       : false  // if true and all processes are synchronous, return result at $j.run()
     };
 
@@ -188,6 +189,10 @@ var Junjo = (function(isNode) {
   // set no timeout
   Junjo.preps.noTimeout = function(bool) { _(this).notimeout = (bool === undefined || !!bool); return this };
 
+  // register informatino of skipping operations before running
+  Junjo.preps.replace  = function() { _(this).replaces[A.shift.call(arguments)] = arguments; return this };
+  Junjo.preps.shortcut = Junjo.preps.replace;
+
   // prepare for execution
   Junjo.preps.prepare = function() {
     var  _this = _(this), $ops = _this.$ops, visited = {};
@@ -266,20 +271,6 @@ var Junjo = (function(isNode) {
     return jn;
   };
 
-  Junjo.prototype.shortcut = function() {
-    if (!this.ready) this.prepare();
-    if(this.running) return this;
-    var lbl = A.shift.call(arguments), $this = $(this), _this = _(this), that = this;
-    $this.skips[lbl] = arguments;
-    _this.befores[lbl].forEach(function(l) {
-      if (_this.afters[l].every(function($op) {
-        return ($this.skips[$op.label] !== undefined);
-      })) return that.shortcut(l);
-    });
-    return $this.skips[lbl];
-  };
-  Junjo.prototype.replace = Junjo.prototype.shortcut;
-
   // run all the registered operations
   Junjo.prototype.run = function() {
     if (!this.ready) this.prepare();
@@ -288,7 +279,8 @@ var Junjo = (function(isNode) {
     $this.running = true;
 
     if (!$this.inputs) $this.inputs = arguments;
-    // Object.freeze($this.inputs);
+    Object.keys(_this.replaces).forEach(function(lbl) { $this.skips[lbl] = _this.replaces[lbl] });
+
     if (_this.start)  _this.start.apply(this, arguments);
     if (_this.result) {
       _this.entries.forEach(function($op) { jExecute.call($op, args2arr(args)) });

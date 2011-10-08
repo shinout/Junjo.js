@@ -12,7 +12,6 @@ function junjo_test() {
   });
 
   $j('B', function() {
-    T.fail('B must not be executed');
     console.yellow(this.label);
   });
 
