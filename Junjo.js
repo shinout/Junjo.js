@@ -185,6 +185,9 @@ var Junjo = (function(isNode) {
   // register a function executed on run()
   Junjo.preps.start = function(fn) { if (typeof fn == 'function') _(this).start = fn };
 
+  // set no timeout
+  Junjo.preps.noTimeout = function(bool) { _(this).notimeout = (bool === undefined || !!bool); return this };
+
   // prepare for execution
   Junjo.preps.prepare = function() {
     var  _this = _(this), $ops = _this.$ops, visited = {};
@@ -212,7 +215,6 @@ var Junjo = (function(isNode) {
     });
 
     _this.ready = true;
-    // Object.freeze(_this);
     resetState.call(this);
     return this;
   };
@@ -462,7 +464,7 @@ var Junjo = (function(isNode) {
     props[this.id] = {};
   };
 
-  Operation.prototype.timeout = function(v) { if (typeof v == "number") _(this).timeout = v; return this };
+  Operation.prototype.timeout = function(v) { if (typeof v == "number") { _(this).timeout = v } return this };
   Operation.prototype.sync  = function(bool) { _(this).async = (bool === undefined) ? false : !bool; return this };
   Operation.prototype.async = function(bool) { _(this).async = (bool === undefined) ? true : !!bool; return this };
   ['pre', 'post']
@@ -592,10 +594,11 @@ var Junjo = (function(isNode) {
       $this.done = true;
       if (_this.async === false || _this.async == null && !$this.cb_accessed) return jResultFilter.call(this, ret);
       if ($this.cb_attempted) return jCallback.apply(this, $this.cb_attempted, $this.trial);
-      if (!jInheritValue.call(this, 'timeout')) return;
+
+      var timeout = jInheritValue.call(this, 'timeout');
+      if (_(this.junjo).notimeout || !timeout ) return;
 
       var self = this;
-      var timeout = jInheritValue.call(this, 'timeout');
       $this.timeout_id = setTimeout(function() {
         if (!$this.finished) {
           $this.done = true;
