@@ -390,10 +390,11 @@ var Junjo = (function(isNode) {
     if (!Array.isArray(arr)) throw new Error("in iterate() : first arguments must be an array");
     if (typeof fn != "function") throw new Error("in iterate() : second arguments must be a function");
     if (sync) return arr.forEach(fn, this);
-    var self = this, last = arr.length - 1;
+    var self = this, last = arr.length - 1, cb = this.callbacks();
     (function iterate(k) {
       fn.call(self, arr[k], k);
       if (k < last) nextTick(iterate.bind(null, k + 1));
+      else cb();
     })(0);
   };
 

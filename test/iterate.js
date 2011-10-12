@@ -8,7 +8,7 @@ function junjo_test() {
 
   $j("array", function() {
     var ret = [];
-    for (var i=0; i<100; i++) {
+    for (var i=0; i<1000; i++) {
       ret.push(Math.random());
     }
     return ret;
@@ -19,7 +19,15 @@ function junjo_test() {
       showAsync(v, this.callbacks(k));
     });
   })
+  .reduce(function(result, v, k) {
+    console.green(k)
+  })
   .after("array");
+
+  $j('afterIterate', function(arr) {
+    console.log(arguments);
+  })
+  .after("iterate");
 
   $j.run();
 }
