@@ -386,6 +386,17 @@ var Junjo = (function(isNode) {
     return key;
   };
 
+  $Scope.proto.iterate = function(arr, fn, sync) {
+    if (!Array.isArray(arr)) throw new Error("in iterate() : first arguments must be an array");
+    if (typeof fn != "function") throw new Error("in iterate() : second arguments must be a function");
+    if (sync) return arr.forEach(fn, this);
+    var self = this, last = arr.length - 1;
+    (function iterate(k) {
+      fn.call(self, arr[k], k);
+      if (k < last) nextTick(iterate.bind(null, k + 1));
+    })(0);
+  };
+
   $Scope.proto.absorb = function(emitter, evtname, fn, name) {
     var self = this, $this = $(this);
     name = getCallbackName(name, $this);
