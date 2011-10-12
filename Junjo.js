@@ -33,7 +33,7 @@ var Junjo = (function(isNode) {
     O($j, 'id', { value : ++current_id, writable : false});
 
     // private properties
-    props[$j.id] = {
+    var _$j = props[$j.id] = {
       $ops         : [],    // registered operations
       labels       : {},    // {label => position of $ops}
       afters       : {},    // list of labels of functions executing after the function with label of the key (label => [op])
@@ -45,8 +45,7 @@ var Junjo = (function(isNode) {
 
     // properties from options
     ['timeout', 'catcher', 'firstError'].forEach(function(k) { $j[k] = options[k] });
-    if (options.result != undefined) _($j).result = !!options.result;
-    if (options.after  != undefined) _($j).after  = !!options.after;
+    ['result', 'after', 'nextTick'].forEach(function(k) { _$j[k] = !!options[k] });
     if (options.run) nextTick(function() { $j.run.apply($j, is_arguments(options.run) ? options.run : [options.run]) });
     $j.constructor = Junjo;
     if (fn) $j(fn);
@@ -273,10 +272,10 @@ var Junjo = (function(isNode) {
     Object.keys(_this.replaces).forEach(function(lbl) { $this.skips[lbl] = _this.replaces[lbl] });
 
     if (_this.start)  _this.start.apply(this, arguments);
-    if (_this.result) {
+    if (_this.result || !_this.nextTick) {
       _this.entries.forEach(function($op) { jExecute.call($op, args2arr(args)) });
       finishCheck.call(this);
-      return ($this.ended) ? $this.out : this;
+      return ($this.ended && _this.result) ? $this.out : this;
     }
     _this.entries.forEach(function($op) { nextTick(jExecute.bind($op, args2arr(args))) });
     return this;
@@ -321,8 +320,8 @@ var Junjo = (function(isNode) {
     $this.results[$op.label] = result;
     finishCheck.call(this);
     _this.afters[$op.label].forEach(function($c) { 
-      if (!_this.result) { nextTick(jExecute.bind($c)) }
-      else  { jExecute.call($c) }
+      if (_this.result || !_this.nextTick) { jExecute.call($c) }
+      else { nextTick(jExecute.bind($c)) }
     });
   };
 

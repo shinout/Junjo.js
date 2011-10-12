@@ -3,7 +3,7 @@ if (node) junjo_test();
 
 // test start
 function junjo_test() {
-  var $j = new Junjo();
+  var $j = new Junjo({nextTick: true});
 
   var report = function() {
     if (!Array.isArray(this.out)) this.out = [];
