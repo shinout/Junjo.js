@@ -136,10 +136,6 @@ var Junjo = (function(isNode) {
     });
   };
 
-  var Future = function(n) {
-    return this.inputs[n];
-  };
-
   // get $op by label. this is just getting, so this can be called after run().
   Junjo.prototype.get = function(lbl) {
     var _this = _(this), ret = _this.$ops[_this.labels[lbl]]
