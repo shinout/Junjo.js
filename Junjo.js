@@ -396,6 +396,7 @@ var Junjo = (function(isNode) {
       else cb();
     })(0);
   };
+  $Scope.proto.forEach = $Scope.proto.iterate;
 
   $Scope.proto.absorb = function(emitter, evtname, fn, name) {
     var self = this, $this = $(this);

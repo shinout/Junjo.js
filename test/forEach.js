@@ -14,8 +14,8 @@ function junjo_test() {
     return ret;
   });
 
-  $j('iterate', function(arr) {
-    this.iterate(arr, function(v, k) {
+  $j('foreach', function(arr) {
+    this.forEach(arr, function(v, k) {
       showAsync(v, this.callbacks());
     });
   })
@@ -30,7 +30,7 @@ function junjo_test() {
   $j('afterIterate', function(v) {
     T.equal(v, 500500);
   })
-  .after("iterate");
+  .after("foreach");
 
   $j.run();
 }
