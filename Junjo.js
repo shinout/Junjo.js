@@ -381,16 +381,22 @@ var Junjo = (function(isNode) {
     return key;
   };
 
-  $Scope.proto.iterate = function(arr, fn, sync) {
-    if (!Array.isArray(arr)) throw new Error("in iterate() : first arguments must be an array");
-    if (typeof fn != "function") throw new Error("in iterate() : second arguments must be a function");
-    if (sync) return arr.forEach(fn, this);
-    var self = this, last = arr.length - 1, cb = this.callbacks();
-    (function iterate(k) {
-      fn.call(self, arr[k], k);
-      if (k < last) nextTick(iterate.bind(null, k + 1));
-      else cb();
-    })(0);
+  $Scope.proto.iterate = function(obj, fn) {
+    if (typeof obj != "object")  throw new Error("first arguments must be an array or an object");
+    if (typeof fn != "function") throw new Error("second arguments must be a function");
+    var self = this, cb = this.callbacks();
+    var next = (function() {
+      var k = 0;
+      if (Array.isArray(obj)) {
+        var last = obj.length;
+        return function() { fn.call(self, obj[k], k++); return k < last };
+      }
+      else {
+        var keys = Object.keys(obj), last = keys.length;
+        return function() { fn.call(self, obj[keys[k]], keys[k++]); return k < last };
+      }
+    })();
+    (function iterate() { (next()) ? nextTick(iterate) : cb() })();
   };
   $Scope.proto.forEach = $Scope.proto.iterate;
 
