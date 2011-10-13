@@ -592,7 +592,7 @@ var Junjo = (function(isNode) {
       var ret = this.val.apply($this.$scope, $this.args); // execution
       $this.done = true;
       if (_this.async === false || _this.async == null && !$this.cb_accessed) return jResultFilter.call(this, ret);
-      if ($this.cb_attempted) return jCallback.apply(this, $this.cb_attempted, $this.trial);
+      if ($this.cb_attempted) return $this.cb_attempted.forEach(function(v) { jCallback.apply(this, v, $this.trial) }, this);
 
       var timeout = jInheritValue.call(this, 'timeout');
       if (_(this.junjo).notimeout || !timeout ) return;
@@ -630,7 +630,10 @@ var Junjo = (function(isNode) {
   var jCallback = function() {
     var $this = $(this), reduce = _(this).reduce;
     if ($this.finished) return;
-    if (!$this.done) return $this.cb_attempted = arguments;
+    if (!$this.done) {
+      if (!$this.cb_attempted) $this.cb_attempted = [];
+      return $this.cb_attempted.push(arguments);
+    }
     var key = A.shift.call(arguments);
     var trial = A.shift.call(arguments);
     if (trial < $this.trial) return;
