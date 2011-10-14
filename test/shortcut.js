@@ -40,7 +40,7 @@ function junjo_test() {
     console.yellow(this.label);
   }).after('C','G');
 
-  $j.shortcut('E', 'shortcut');
+  $j.shortcut('E', 'shortcut', "2");
 
   try {
     $j('I', function() {});

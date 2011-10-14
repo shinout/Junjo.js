@@ -51,7 +51,7 @@ function junjo_test() {
   }
 
   $j.on('end', function(err, out) {
-    T.equal(out.E[0], 'replace');
+    T.equal(out.E, 'replace');
   });
 
   $j.run();

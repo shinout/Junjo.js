@@ -184,7 +184,7 @@ var Junjo = (function(isNode) {
   Junjo.preps.noTimeout = function(bool) { _(this).notimeout = (bool === undefined || !!bool); return this };
 
   // register informatino of skipping operations before running
-  Junjo.preps.replace  = function() { _(this).replaces[A.shift.call(arguments)] = arguments; return this };
+  Junjo.preps.replace  = function() { _(this).replaces[A.shift.call(arguments)] = (arguments.length > 1) ? arguments : arguments[0]; return this };
   Junjo.preps.shortcut = Junjo.preps.replace;
 
   Object.keys(Junjo.preps).forEach(function(p) {
