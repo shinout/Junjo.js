@@ -236,7 +236,7 @@ var Junjo = (function(isNode) {
 
   // run all the registered operations
   Junjo.prototype.run = function() {
-    if (this.ended) return this;
+    if (this.running) return this;
     var  _this = _(this), $ops = _this.$ops, visited = {}, args = arguments;
 
     _this.entries = $ops.filter(function($op) {
