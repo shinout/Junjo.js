@@ -8,7 +8,7 @@ var Junjo = (function(isNode) {
       args2arr     = function(args) { return A.map.call(args, function(v) {return v }) },
       nextTick     = (isNode) ? process.nextTick : function(fn) { setTimeout(fn, 0) },
       is_arguments = function(v) { return !!(v && v.callee) },
-      getSubFunc   = function($j) { return function() { this.sub = $j } },
+      getSubFunc   = function($j) { return function() { this.sub = $j.inherit(this.junjo) } },
       SHIFT        = 'shift';
 
   /** preparation for private properties **/
@@ -171,6 +171,7 @@ var Junjo = (function(isNode) {
   // inherit settings of given Junjo instance
   Junjo.preps.inherit = function($j) {
     ['timeout', 'catcher', 'firstError'].forEach(function(k) { this[k] = $j[k] }, this);
+    if (_($j).notimeout) this.noTimeout();
     return this;
   };
 
