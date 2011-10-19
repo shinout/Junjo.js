@@ -83,7 +83,7 @@ var Junjo = (function(isNode) {
 
     defaultCatcher : {
       value : function(e, args) {
-        if (!_(this.junjo).silent) console.log('ERROR in label ' + this.label, e.stack || e.message || e);
+        if (!_(this.junjo).silent) console.error('ERROR in label ' + this.label, e.stack || e.message || e);
         e.args = args;
         this.err = e;
         this.terminate();
