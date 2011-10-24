@@ -6,8 +6,6 @@ var cl    = require('termcolor').define();
 var ignores = [
   'load.test.js',
   'all.js',
-  'umecob.js',
-  'jshint.js',
   'memuse.js'];
 
 // 1. get test files
