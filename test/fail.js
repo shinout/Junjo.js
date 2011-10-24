@@ -4,7 +4,7 @@ if (node) junjo_test();
 // test start
 function junjo_test() {
   var $j = new Junjo();
-  var u2r = require('../lib/url2request');
+  var u2r = require('u2r');
   var http = require('http');
 
   $j('request', function(url) {

@@ -1,8 +1,8 @@
-var Junjo = require('../Junjo');
+var Junjo = require('junjo');
 var $j    = new Junjo();
 var fs    = require('fs');
 var exec  = require('child_process').exec;
-var cl    = require('../lib/termcolor').define();
+var cl    = require('termcolor').define();
 var ignores = [
   'load.test.js',
   'all.js',

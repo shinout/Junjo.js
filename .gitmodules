@@ -1,6 +1,0 @@
-[submodule "lib/es5-shim"]
-	path = lib/es5-shim
-	url = git://github.com/kriskowal/es5-shim.git
-[submodule "docs/lib/SyntaxHighlighter"]
-	path = docs/lib/SyntaxHighlighter
-	url = git://github.com/alexgorbatchev/SyntaxHighlighter.git

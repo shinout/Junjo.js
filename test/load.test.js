@@ -1,5 +1,5 @@
 var node = (typeof exports == 'object' && exports === this);
-if (node) { require('../lib/termcolor').define() }
+if (node) { require('termcolor').define() }
 
 var assert = (node) ? require('assert') : {};
 var T = { count : 0, success : 0 };
@@ -62,7 +62,7 @@ if (node) {
       that.node = true;
       that.syncMethod = syncMethod;
       that.consolelog = consolelog;
-      that.Junjo = require('../Junjo');
+      that.Junjo = require('junjo');
       that.T = T;
     }
   };

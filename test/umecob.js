@@ -1,6 +1,6 @@
 var umecob = (function() {
 
-if (typeof require == 'function') var Junjo = require('../Junjo');
+if (typeof require == 'function') var Junjo = require('../lib/Junjo');
 
 /**
  * params to pass to the umecob.js
