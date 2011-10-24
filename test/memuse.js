@@ -45,6 +45,7 @@ while (j < 30) {
   j++;
 }
 
+/*
 console.log('-------- require umecob -----------');
 var umecob = require('./umecob');
 memdiff();
@@ -61,4 +62,5 @@ while (j < 30) {
   j++;
 }
 
+*/
 

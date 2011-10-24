@@ -5,7 +5,7 @@ if (node) junjo_test();
 function junjo_test() {
   var counter1 = 0; counter2 = 0;
 
-  var $j = new Junjo({run: Junjo.multi("hoge", "fuga")});
+  var $j = new Junjo({run: Junjo.multi("hoge", "fuga"), clear: false, destroy: false});
 
   $j('1st', function() {
     counter1++;

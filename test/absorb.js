@@ -40,7 +40,7 @@ function junjo_test() {
 
   var $j2 = new Junjo();
 
-  $j2(function() {
+  $j2("req", function() {
     var count = Array.prototype.pop.call(arguments);
     var http = require('http');
     var req = http.request({

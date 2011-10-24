@@ -12,7 +12,11 @@ var Junjo = (function(isNode) {
       SHIFT        = 'shift',
       fork         = function() { var f = function() {}; f.prototype = this; return new f },
       getDefined   = function(a, b) { return (typeof a != "undefined") ? a : b },
-      shallowCopy  = function(o) { return Object.keys(o).reduce(function(r, k) { r[k] = o[k]; return r }, {}) };
+      shallowCopy  = function(o) { return Object.keys(o).reduce(function(r, k) { r[k] = o[k]; return r }, {}) },
+      extend       = function(c, p) { 
+        if (c.__proto__) c.__proto__ = p; 
+        else Object.getOwnPropertyNames(p).forEach(function(k) { c[k] = p[k] })
+      };
 
   /** preparation for private properties **/
   var props = {}, current_id = 0;
@@ -33,7 +37,8 @@ var Junjo = (function(isNode) {
     catcher   : "function", // default error handler
     result    : "boolean",  // return "out" if all operation is synchronous
     nextTick  : "boolean",  // do each operation in different event loops
-    silent    : "boolean"   // no error report to stdout in default catcher
+    silent    : "boolean",  // no error report to stdout in default catcher
+    destroy   : "boolean"   // delete running objects for saving memory, default : true
   };
 
   var optionDefaults = {
@@ -43,6 +48,7 @@ var Junjo = (function(isNode) {
     result    : false,          // return "out" if all operation is synchronous
     nextTick  : false,          // do each operation in different event loops
     silent    : false,          // no error report to stdout in default catcher
+    destroy   : false           // delete running objects for saving memory, default : true
   };
 
   /** constructor **/
@@ -58,8 +64,7 @@ var Junjo = (function(isNode) {
     O($J, 'tpl_id', { value : ++current_id, writable : false});
 
     // $J extends JTemplate.prototype
-    if ($J.__proto__) $J.__proto__ = JTemplate.prototype;
-    else Object.keys(JTemplate.prototype).forEach(function(k) { $J[k] = JTemplate.prototype[k] });
+    extend($J, JTemplate.prototype);
     $J.constructor = Junjo;
 
     $J.$ops    = []; // registered operations
@@ -67,11 +72,12 @@ var Junjo = (function(isNode) {
     $J.befores = {}; // list of labels of functions executing after  the function with label of the key (label => [label])
     $J.afters  = {}; // list of labels of functions executing after the function with label of the key (label => [op])
     $J.options = fork.call(optionDefaults); // options for run
-    $J.after   = !!options.after; // if true, registered operations are set after the previously-set operation.
     $J.hooks   = { start : null, end: null, terminate: null };
+    $J.after   = !!options.after; // if true, registered operations are set after the previously-set operation.
+    $J.clear   = !!options.clear; // if true, delete this template after the first Junjo
 
     // set options
-    Object.keys(optionTypes).forEach(function(k) { $J[k](options[k]) });
+    Object.keys(optionTypes).forEach(function(k) { if (options[k] !== undefined) $J[k](options[k]) });
 
     props[$J.tpl_id] = $J;
     return $J;
@@ -80,9 +86,8 @@ var Junjo = (function(isNode) {
   var Junjo = function() {
     var $j = function() { return $j.register.apply($j, arguments) };
 
-    // $j extends JTemplate.prototype
-    if ($j.__proto__) $j.__proto__ = Junjo.prototype;
-    else Object.keys(Junjo.prototype).forEach(function(k) { $j[k] = JTemplate.prototype[k] });
+    // $j extends Junjo.prototype
+    extend($j, Junjo.prototype);
     $j.constructor = Junjo;
 
     var $J, options = (arguments.length > 1) ? A.pop.call(arguments) : null;
@@ -111,7 +116,7 @@ var Junjo = (function(isNode) {
 
     // set options
     $j.options = fork.call($J.options);
-    if (options) Object.keys(optionTypes).forEach(function(key) { $j[key](options[key]) });
+    if (options) Object.keys(optionTypes).forEach(function(k) { if (options[k] !== undefined) $j[k](options[k]) });
 
     if (options && options.run) nextTick(function() {
       $j.run.apply($j, (is_arguments(options.run)) ? options.run : Junjo.multi(options.run));
@@ -120,10 +125,8 @@ var Junjo = (function(isNode) {
   };
 
   // JTemplate, Junjo extends Function prototype
-  Object.getOwnPropertyNames(Function.prototype).forEach(function(k) {
-    JTemplate.prototype[k] = Function.prototype[k];
-    Junjo.prototype[k] = Function.prototype[k];
-  });
+  extend(JTemplate.prototype, Function.prototype);
+  extend(Junjo.prototype, Function.prototype);
 
   // the number of registered operations
   O(JTemplate.prototype, "size", { get : function () { return this.$ops.length }, set : E });
@@ -243,8 +246,8 @@ var Junjo = (function(isNode) {
     var $J = new JTemplate();
     ["labels", "befores", "options", "hooks"].forEach(function(k) { $J[k] = shallowCopy(this[k]) }, this);
     $J.$ops  = this.$ops.slice();
-    $J.$ops.forEach(function($op) { $J.afters[$op.label] = [] });
-    $J.after = this.options.after;
+    $J.$ops.forEach(function($op) { _($op).referred++; $J.afters[$op.label] = [] });
+    ["after", "clear"].forEach(function(name) { $J[name] = this.options.after }, this);
     return $J;
   };
 
@@ -281,10 +284,7 @@ var Junjo = (function(isNode) {
   Junjo.prototype.shortcut = Junjo.prototype.replace;
 
   // inherit settings of given Junjo instance
-  Junjo.prototype.inherit = function($j) {
-    Object.keys(optionTypes).forEach(function(k) { this.options[k] = $j.options[k] }, this);
-    return this;
-  };
+  Junjo.prototype.inherit = function($j) { extend(this.options, $j.options); return this; };
 
   Junjo.prototype.next = function(jn, options) {
     return this.on('end', Junjo.isJunjo(jn) ? function(err, out) { jn.run(err, out) } : jn);
@@ -357,6 +357,18 @@ var Junjo = (function(isNode) {
     if ($this.finished < _this.$ops.length || $this.ended) return;
     $this.ended = true;
     if (this.out instanceof E && !Object.keys(this.out).length) this.out = $this.results;
+    if (_this.clear) this.on("end", function() {
+      var scopes = $(this).scopes;
+      Object.keys(scopes).forEach(function(k) {
+        if (--_(scopes[k]).referred <= 0) D(scopes[k].tpl_id)
+      });
+      D(this.tpl_id);
+    });
+    if (this.options.destroy) this.on("end", function() {
+      var scopes = $(this).scopes;
+      Object.keys(scopes).forEach(function(k) { D(scopes[k].id) });
+      D(this.id);
+    });
     this.emit('end', this.err, this.out);
   };
 
@@ -498,7 +510,7 @@ var Junjo = (function(isNode) {
   var Operation = function(val, label, $J) {
     O(this, 'tpl_id', { value : ++current_id, writable : false });
     O(this, 'label', { value : label, writable : false });
-    props[this.tpl_id] = { val: val, $J: $J };
+    props[this.tpl_id] = { val: val, $J: $J, referred: 1 };
   };
 
   Operation.prototype.timeout = function(v) { if (typeof v == "number") { _(this).timeout = v } return this };
@@ -696,6 +708,7 @@ var Junjo = (function(isNode) {
       if ($this.loop && !$this.loop.finished) { // if loop, this operation is executed again.
         var l = $this.loop, args = l.args;
         l.count++, l.result = result;
+        if ($this.timeout_id) clearTimeout($this.timeout_id);
         return (_this.loop.nextTick)
           ? nextTick(function() { jExecute.call(self, args, {loop: l}, true) })
           : jExecute.call(this, args, {loop: l}, true);

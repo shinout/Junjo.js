@@ -12,14 +12,13 @@ function asy(color, name, n, cb, e) {
 // test start
 function junjo_test() {
 
-    var $j = new Junjo();
-  $j.noTimeout();
+  var $j = new Junjo();
+  $j.noTimeout(true);
 
-  var $k = new Junjo();
-  $k.timeout = 1;
+  var $k = new Junjo({timeout: 0.03});
 
   $k(function() {
-    setTimeout(this.cb, 2000);
+    setTimeout(this.cb, 40);
   })
   .fail(function(e) {
     T.fail(e, "notimeout");

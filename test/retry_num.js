@@ -21,7 +21,7 @@ function junjo_test() {
     T.deepEqual(this.absorbData(), null, "absorbData in retry");
     T.deepEqual(this.absorbEnd(), null, "absorbEnd in retry");
     T.equal(count, ++counter, "count");
-    return 200;
+    return 20;
   })
   .next(function(n) {
     T.ok(n > 0.95, ">0.95");
