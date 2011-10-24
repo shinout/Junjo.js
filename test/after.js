@@ -43,7 +43,8 @@ function junjo_test() {
     asyncMethod(this.label, 10, this.callback);
   }).after('2nd', '3rd');
 
-  $j.run();
-  $j.next(function(err, out) {
+  $j.on("end", function(err, out) {
   });
+
+  $j.run();
 }

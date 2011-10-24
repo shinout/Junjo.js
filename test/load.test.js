@@ -30,7 +30,7 @@ T.__proto__.total = function() { return this.success + '/' + this.count };
 function asyncMethod(name, n, cb, e) {
   consolelog(name);
   setTimeout(function() {
-    consolelog('\t' + name + ' + ' + n + ' [sec]');
+    consolelog('\t' + name + ' + ' + n + ' [msec]');
     cb(e || null, name);
   }, n);
 }

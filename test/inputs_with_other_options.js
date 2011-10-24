@@ -9,6 +9,7 @@ function junjo_test() {
   $j.inputs(["a", "b"]);
 
   $j('1st', function(a) {
+    console.green(a);
     T.equal(a, "a");
   })
   .using("a");

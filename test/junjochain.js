@@ -5,11 +5,13 @@ if (node) junjo_test();
 function junjo_test() {
   var hoge = 1;
 
-  new Junjo(function() {
+  var $j = new Junjo({run: true});
+
+  $j(function() {
     setTimeout(this.callback, 100);
     hoge++;
     T.equal(hoge, 2);
-  }, {run: true})
+  })
   .next(function() {
     console.log("timeout end");
     hoge++;

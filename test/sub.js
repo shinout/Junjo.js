@@ -8,8 +8,8 @@ function junjo_test() {
   $j('1st', function() {
     syncMethod(this.label);
     this.sub('2nd', function() {
-      T.equal(this.junjo.timeout, 1, "timeout");
-      console.log(this.junjo.timeout)
+      T.equal(this.junjo.options.timeout, 1, "timeout");
+      console.log(this.junjo.options.timeout)
       asyncMethod(this.label, 20, this.cb);
       this.out[this.label] = "hoge";
     });

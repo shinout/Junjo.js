@@ -11,6 +11,7 @@ function junjo_test() {
   })
   .eshift()
   .fail(function(e) {
+    console.log(e.stack)
     T.equal(e, "ERR");
   });
 

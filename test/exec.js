@@ -12,14 +12,13 @@ function junjo_test() {
   });
 
   $j(function(a, b) {
-    console.log(arguments)
     T.equal(arguments.length, 2);
     T.equal(a, 'a');
     T.equal(b, 'b');
   })
   .after('a', 'b')
   .next(function() {
-    asyncMethod("async", 100, this.cb);
+    asyncMethod("async", 10, this.cb);
   });
 
 

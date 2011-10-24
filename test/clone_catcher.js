@@ -6,9 +6,9 @@ function junjo_test() {
 
   var $j = new Junjo();
 
-  $j.catcher = function(e) {
+  $j.catcher(function(e) {
     T.ok("original catcher");
-  };
+  });
 
   $j(function() {
     throw new Error();

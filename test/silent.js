@@ -4,7 +4,7 @@ if (node) junjo_test();
 // test start
 function junjo_test() {
 
-  var $j = new Junjo().silent();
+  var $j = new Junjo().silent(true);
 
   $j('1st', function() {
     throw new Error(this.label);

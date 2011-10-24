@@ -49,7 +49,8 @@ function junjo_test() {
     $j2.remove('7th');
     $j2('7th-2', function() {
       asy(this.$.col, this.label, 3, this.callback);
-    });
+    })
+    .after("6th");
 
     $j2.run("purple");
 

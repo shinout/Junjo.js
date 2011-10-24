@@ -12,7 +12,7 @@ function junjo_test() {
     }, n);
   }
 
-  var $j = new Junjo({ firstError : true });
+  var $j = new Junjo();
 
   $j('1st', function() {
     asy(this.label, 10, this.callback);
@@ -20,7 +20,8 @@ function junjo_test() {
 
   $j('2nd', function() {
     asy(this.label, 20, this.callback);
-  });
+  })
+  .firstError();
 
   $j('3rd', function() {
     asy(this.label, 5, this.callback);
