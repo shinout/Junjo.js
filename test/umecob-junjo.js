@@ -1,4 +1,4 @@
-var umecob = require('./umecob');
+var umecob = require('../lib/umecob');
 
 var u2 = new umecob({starts: [function(params) {
   params.tpl_id = __dirname + '/' + params.tpl_id + '.html';
