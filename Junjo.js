@@ -41,7 +41,7 @@ var Junjo = (function(isNode) {
     destroy   : "boolean"   // delete running objects for saving memory, default : true
   };
 
-  var optionDefaults = {
+  var defaultOptions = {
     timeout   : 5,              // time to check timeout
     noTimeout : false,          // if true, timeout is not set
     catcher   : defaultCatcher, // default error handler
@@ -71,7 +71,7 @@ var Junjo = (function(isNode) {
     $J.labels  = {}; // {label => position of $ops}
     $J.befores = {}; // list of labels of functions executing after  the function with label of the key (label => [label])
     $J.afters  = {}; // list of labels of functions executing after the function with label of the key (label => [op])
-    $J.options = fork.call(optionDefaults); // options for run
+    $J.options = fork.call(defaultOptions); // options for run
     $J.hooks   = { start : null, end: null, terminate: null };
     $J.after   = !!options.after; // if true, registered operations are set after the previously-set operation.
     $J.clear   = !!options.clear; // if true, delete this template after the first Junjo
@@ -734,11 +734,11 @@ var Junjo = (function(isNode) {
     runNext.call(this.junjo, this, result);
   };
 
-  Junjo.Template = JTemplate;
-  Junjo.catcher  = defaultCatcher;
-  Junjo.isNode   = isNode;
-  Junjo.multi    = Junjo.args = function() { return arguments };
-  Junjo.isJunjo  = function($j) { return $j && $j.constructor == Junjo };
+  Junjo.defaultOptions = defaultOptions;
+  Junjo.Template       = JTemplate;
+  Junjo.isNode         = isNode;
+  Junjo.multi          = Junjo.args = function() { return arguments };
+  Junjo.isJunjo        = function($j) { return $j && $j.constructor == Junjo };
   return Junjo;
 })(typeof exports == 'object' && exports === this);
 
