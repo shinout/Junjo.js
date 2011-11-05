@@ -10,13 +10,12 @@ function junjo_test() {
   $j('request', function(url) {
     var options = u2r(url);
     console.log(options)
-    var req = http.request(url, this.cb);
-    req.end();
+    var req = http.request(options, this.cb);
     req.on("error", this.fail);
+    req.end();
   })
   .fail(function(e) {
     console.log(e.message)
-    T.equal(e.message, "EAFNOSUPPORT, Address family not supported by protocol family", "error message");
     this.terminate();
   });
 

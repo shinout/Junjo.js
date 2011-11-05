@@ -27,7 +27,7 @@ function junjo_test() {
   $j('2nd',function() {
     console.log(arguments);
     T.strictEqual(arguments.length, 2, "argument length");
-    var grep = spawn('grep', ['consolelog', __filename]);
+    var grep = spawn('grep', ['console', __filename]);
     this.absorbData(grep.stdout, '1stdata');
     this.absorbData(grep.stderr, '1sterr');
   }).after('1st');
@@ -47,17 +47,18 @@ function junjo_test() {
       method: 'GET',
       host: 'localhost',
       port: 79 + count,
-      path: '/',
-      protocol: 'http' }, this.cb);
-    req.on("error", this.fail.bind(this));
+      path: '/'
+    }, this.cb);
+    req.on("error", this.fail);
     req.end();
   })
   .fail(function(e) {
     console.purple("request Error", e.message);
-    //this.terminate();
+    this.terminate();
   })
   .loop(2)
   .next(function(res) {
+    console.log(res)
     this.sub(function() { this.out = 'Yeah!' });
     var grep = spawn('grep', ['consolelog', __filename]);
     this.absorbData(grep.stdout, '1stdata');
