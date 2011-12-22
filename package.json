@@ -1,6 +1,6 @@
 {
   "name": "junjo"
-, "version": "0.2.7"
+, "version": "0.2.8"
 , "description": "Yet Another Flow Control (YAFC)"
 , "tags": ["flow-control", "node", "async", "callback", "stream"]
 , "author": "SHIN Suzuki <shinout310@gmail.com>"
